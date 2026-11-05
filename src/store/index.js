@@ -69,6 +69,12 @@ export const actions = {
   deleteItem(itemId) {
     return withRefresh(() => itemsApi.deleteItem(itemId))
   },
+  moveItem(itemId, targetBoxId) {
+    return withRefresh(() => itemsApi.moveItem(itemId, targetBoxId))
+  },
+  setBoxStatus(boxId, status) {
+    return withRefresh(() => boxesApi.setBoxStatus(boxId, status))
+  },
   seedDemo() {
     return withRefresh(() => seedDemoData())
   },

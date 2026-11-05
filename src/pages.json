@@ -25,6 +25,12 @@
       }
     },
     {
+      "path": "pages/search/index",
+      "style": {
+        "navigationBarTitleText": "搜索物品"
+      }
+    },
+    {
       "path": "pages/settings/index",
       "style": {
         "navigationBarTitleText": "数据与说明"

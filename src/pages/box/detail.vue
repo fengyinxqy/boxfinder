@@ -25,6 +25,25 @@
       <text class="label__date">{{ formatDate(box.createdAt) }} 创建</text>
     </view>
 
+    <view class="status-card">
+      <view class="status-card__head">
+        <text class="status-card__title">箱子状态</text>
+        <text class="status-card__hint">可随时改回之前的状态</text>
+      </view>
+      <view class="status-steps">
+        <view
+          v-for="(step, index) in statusList"
+          :key="step.key"
+          class="status-step"
+          :class="{ 'status-step--on': box.status === step.key }"
+          @tap="changeStatus(step)"
+        >
+          <view class="status-step__dot">{{ index + 1 }}</view>
+          <text class="status-step__label">{{ step.label }}</text>
+        </view>
+      </view>
+    </view>
+
     <view class="section-head">
       <text class="section-title">箱内物品</text>
       <text class="section-count">{{ items.length }} 件</text>
@@ -36,6 +55,7 @@
           <text class="item-row__name">{{ item.name }}</text>
           <text class="item-row__meta">数量 ×{{ item.quantity }}</text>
         </view>
+        <text class="item-row__move" @tap.stop="openMove(item)">移箱</text>
         <text class="item-row__delete" @tap.stop="confirmDeleteItem(item)">删除</text>
         <text class="item-row__arrow">›</text>
       </view>
@@ -55,6 +75,13 @@
     </view>
 
     <BoxFormDialog v-model="dialogVisible" :box="box" :loading="saving" @submit="handleUpdate" />
+    <MoveItemDialog
+      v-model="moveDialogVisible"
+      :item="movingItem"
+      :current-box="box"
+      :boxes="otherBoxes"
+      @select="handleMove"
+    />
   </view>
 
   <view v-else class="page">
@@ -69,13 +96,18 @@ import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { actions, refresh, store } from '../../store/index.js'
 import { formatDate } from '../../utils/format.js'
+import { BOX_STATUS_LIST } from '../../constants/index.js'
 import BoxFormDialog from '../../components/BoxFormDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
+import MoveItemDialog from '../../components/MoveItemDialog.vue'
 import StatusChip from '../../components/StatusChip.vue'
 
 const boxId = ref('')
 const dialogVisible = ref(false)
 const saving = ref(false)
+const moveDialogVisible = ref(false)
+const movingItem = ref(null)
+const statusList = BOX_STATUS_LIST
 
 const box = computed(() => store.db.boxes.find((item) => item.id === boxId.value) || null)
 const items = computed(() =>
@@ -83,6 +115,13 @@ const items = computed(() =>
     .filter((item) => item.boxId === boxId.value)
     .sort((a, b) => a.createdAt - b.createdAt)
 )
+const otherBoxes = computed(() => {
+  const current = box.value
+  if (!current) return []
+  return store.db.boxes
+    .filter((entry) => entry.moveId === current.moveId && entry.id !== current.id)
+    .sort((a, b) => a.no - b.no)
+})
 
 onLoad((options) => {
   boxId.value = (options && options.id) || ''
@@ -102,6 +141,34 @@ function goAdd() {
 
 function goEdit(item) {
   uni.navigateTo({ url: `/pages/item/form?boxId=${boxId.value}&id=${item.id}` })
+}
+
+function openMove(item) {
+  movingItem.value = item
+  moveDialogVisible.value = true
+}
+
+function handleMove(target) {
+  const item = movingItem.value
+  if (!item) return
+  try {
+    actions.moveItem(item.id, target.id)
+    moveDialogVisible.value = false
+    movingItem.value = null
+    uni.showToast({ title: `已移到 ${target.no} 号箱`, icon: 'none' })
+  } catch (error) {
+    uni.showToast({ title: error.message || '移动失败', icon: 'none' })
+  }
+}
+
+function changeStatus(step) {
+  if (!box.value || box.value.status === step.key) return
+  try {
+    actions.setBoxStatus(boxId.value, step.key)
+    uni.showToast({ title: `状态改为${step.label}`, icon: 'none' })
+  } catch (error) {
+    uni.showToast({ title: error.message || '状态修改失败', icon: 'none' })
+  }
 }
 
 function confirmDeleteItem(item) {
@@ -167,7 +234,7 @@ function confirmDelete() {
 .label {
   position: relative;
   padding: 36rpx 32rpx 30rpx;
-  margin: 8rpx 0 30rpx;
+  margin: 8rpx 0 26rpx;
   background: #fffaf0;
   border: 2rpx dashed #c9a87c;
   border-radius: 22rpx;
@@ -256,6 +323,75 @@ function confirmDelete() {
   color: #b6a184;
 }
 
+.status-card {
+  padding: 24rpx 26rpx;
+  margin-bottom: 28rpx;
+  background: var(--c-surface);
+  border: 1rpx solid var(--c-line);
+  border-radius: 22rpx;
+}
+
+.status-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.status-card__title {
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.status-card__hint {
+  font-size: 21rpx;
+  color: var(--c-ink-3);
+}
+
+.status-steps {
+  display: flex;
+}
+
+.status-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  padding: 10rpx 0;
+}
+
+.status-step__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  font-size: 21rpx;
+  font-weight: 600;
+  color: var(--c-ink-3);
+  background: var(--c-bg);
+  border: 1rpx solid var(--c-line-strong);
+  border-radius: 50%;
+}
+
+.status-step__label {
+  margin-top: 8rpx;
+  font-size: 21rpx;
+  color: var(--c-ink-3);
+}
+
+.status-step--on .status-step__dot {
+  color: #fffdf8;
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  box-shadow: 0 8rpx 18rpx rgba(194, 84, 47, 0.24);
+}
+
+.status-step--on .status-step__label {
+  font-weight: 600;
+  color: var(--c-accent);
+}
+
 .item-row {
   display: flex;
   align-items: center;
@@ -285,6 +421,15 @@ function confirmDelete() {
   margin-top: 6rpx;
   font-size: 22rpx;
   color: var(--c-ink-3);
+}
+
+.item-row__move {
+  padding: 8rpx 16rpx;
+  margin-right: 10rpx;
+  font-size: 22rpx;
+  color: var(--c-accent);
+  background: var(--c-accent-soft);
+  border-radius: 999rpx;
 }
 
 .item-row__delete {

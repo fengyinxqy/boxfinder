@@ -151,3 +151,6 @@ vite.config.ts.timestamp-*
 # uni-app
 unpackage/
 .hbuilderx/
+
+# H5 端到端截图与临时产物
+e2e-artifacts/

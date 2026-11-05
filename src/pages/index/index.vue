@@ -43,8 +43,10 @@
       <text class="note__item">· 管理多次搬家，每次搬家单独编号</text>
       <text class="note__item">· 添加、编辑、删除箱子，记录目标房间和备注</text>
       <text class="note__item">· 在箱内记录物品名称和数量，支持保存并继续添加</text>
+      <text class="note__item">· 搜物品名称或箱号，结果显示「3 号箱 · 书房」</text>
+      <text class="note__item">· 物品可以移箱，箱子按封箱、搬运、拆箱推进</text>
       <text class="note__item">· 数据保存在本机，关闭重进不会丢</text>
-      <text class="note__item note__item--muted">· 搜索、移箱和备份将在后续里程碑开放</text>
+      <text class="note__item note__item--muted">· 备份与恢复将在后续里程碑开放</text>
     </view>
 
     <view class="bottom-bar">
