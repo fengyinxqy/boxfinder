@@ -1,0 +1,35 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "搬家装箱助手"
+      }
+    },
+    {
+      "path": "pages/move/detail",
+      "style": {
+        "navigationBarTitleText": "搬家详情"
+      }
+    },
+    {
+      "path": "pages/box/detail",
+      "style": {
+        "navigationBarTitleText": "箱子详情"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationBarTitleText": "数据与说明"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "搬家装箱助手",
+    "navigationBarBackgroundColor": "#F6F1E7",
+    "backgroundColor": "#F6F1E7",
+    "backgroundTextStyle": "dark"
+  }
+}
