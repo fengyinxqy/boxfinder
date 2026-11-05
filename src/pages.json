@@ -5,6 +5,24 @@
       "style": {
         "navigationBarTitleText": "搬家装箱助手"
       }
+    },
+    {
+      "path": "pages/move/detail",
+      "style": {
+        "navigationBarTitleText": "搬家详情"
+      }
+    },
+    {
+      "path": "pages/box/detail",
+      "style": {
+        "navigationBarTitleText": "箱子详情"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationBarTitleText": "数据与说明"
+      }
     }
   ],
   "globalStyle": {
