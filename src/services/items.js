@@ -3,6 +3,10 @@ import { NotFoundError, ValidationError } from '../utils/errors.js'
 import { createId } from '../utils/id.js'
 import { loadDb, mutate } from './db.js'
 
+function normalizePhotoPath(photoPath) {
+  return String(photoPath == null ? '' : photoPath).trim()
+}
+
 function normalizeName(name) {
   const value = String(name == null ? '' : name).trim()
   if (!value) throw new ValidationError('请填写物品名称')
@@ -45,8 +49,8 @@ export function createItem(boxId, payload = {}) {
       boxId,
       name,
       quantity,
-      // 照片功能在 M5 接入；先保留字段，避免把相机临时路径写进数据。
-      photoPath: '',
+      // 照片由页面先经 photos.persistPhoto 转成永久路径，再写到这里。
+      photoPath: normalizePhotoPath(payload.photoPath),
       createdAt: now,
     }
     db.items.push(item)
@@ -64,6 +68,9 @@ export function updateItem(itemId, payload = {}) {
 
     item.name = name
     item.quantity = quantity
+    if ('photoPath' in payload) {
+      item.photoPath = normalizePhotoPath(payload.photoPath)
+    }
     const box = db.boxes.find((entry) => entry.id === item.boxId)
     if (box) box.updatedAt = Date.now()
     return item

@@ -42,15 +42,33 @@
     </view>
 
     <view class="field">
-      <text class="field__label">照片（选填）</text>
-      <view class="photo">
+      <text class="field__label">照片（选填，最多 1 张）</text>
+
+      <view v-if="photoPath" class="photo-preview">
+        <image class="photo-preview__img" :src="photoPath" mode="aspectFill" @tap="previewPhoto" />
+        <view class="photo-preview__body">
+          <text class="photo-preview__state">{{ photoHint }}</text>
+          <view class="photo-preview__actions">
+            <text class="photo-preview__action" @tap="chooseFrom('album')">更换</text>
+            <text class="photo-preview__action photo-preview__action--danger" @tap="clearPhoto">移除</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-else class="photo">
         <view class="photo__icon">▧</view>
         <view class="photo__body">
-          <text class="photo__title">照片功能将在 M5 开放</text>
-          <text class="photo__desc">这一版先记录名称和数量，拍照与选图下个里程碑接入。</text>
+          <text class="photo__title">拍一张，或从相册选一张</text>
+          <text class="photo__desc">照片会复制到小程序本地目录；卸载或清理微信数据会一起消失。</text>
         </view>
-        <text class="photo__tag">暂不可用</text>
+        <text class="photo__tag">选填</text>
       </view>
+
+      <view class="photo-actions">
+        <button class="btn btn--ghost photo-actions__btn" hover-class="none" @tap="chooseFrom('camera')">拍照</button>
+        <button class="btn btn--ghost photo-actions__btn" hover-class="none" @tap="chooseFrom('album')">从相册选择</button>
+      </view>
+      <text class="field__hint">每件物品最多 1 张；照片不在备份包内。</text>
     </view>
 
     <text v-if="error" class="form-error">{{ error }}</text>
@@ -89,6 +107,7 @@ import { computed, nextTick, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { actions, refresh, store } from '../../store/index.js'
 import { LIMITS } from '../../constants/index.js'
+import { isManagedPhoto, persistPhoto, removePhoto } from '../../services/photos.js'
 import EmptyState from '../../components/EmptyState.vue'
 
 const limits = LIMITS
@@ -96,6 +115,8 @@ const boxId = ref('')
 const itemId = ref('')
 const name = ref('')
 const quantityText = ref('1')
+const photoPath = ref('')
+const originalPhotoPath = ref('')
 const error = ref('')
 const saving = ref(false)
 const nameFocused = ref(false)
@@ -105,6 +126,10 @@ const box = computed(() => store.db.boxes.find((entry) => entry.id === boxId.val
 const item = computed(() => store.db.items.find((entry) => entry.id === itemId.value) || null)
 const displayQuantity = computed(() => Number(quantityText.value) || 1)
 const notFoundTitle = computed(() => (box.value ? '物品不存在' : '箱子不存在'))
+const photoHint = computed(() => {
+  if (!photoPath.value) return ''
+  return isManagedPhoto(photoPath.value) ? '已保存到本机' : '当前环境无法写入持久目录，保存后不会保留'
+})
 
 onLoad((options) => {
   boxId.value = (options && options.boxId) || ''
@@ -123,6 +148,51 @@ function fillFromItem() {
   if (!target) return
   name.value = target.name
   quantityText.value = String(target.quantity)
+  photoPath.value = target.photoPath || ''
+  originalPhotoPath.value = target.photoPath || ''
+}
+
+function previewPhoto() {
+  if (!photoPath.value) return
+  uni.previewImage({ urls: [photoPath.value] })
+}
+
+function chooseFrom(source) {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: [source],
+    success: (res) => {
+      const tempPath = res && res.tempFilePaths && res.tempFilePaths[0]
+      if (!tempPath) return
+      try {
+        // 换图前先清理本次会话里刚选、还没保存的临时照片。
+        discardDraftPhoto()
+        const saved = persistPhoto(tempPath)
+        photoPath.value = saved.path
+        error.value = ''
+      } catch (err) {
+        error.value = err.message || '照片保存失败'
+      }
+    },
+    fail: (err) => {
+      const message = (err && err.errMsg) || ''
+      // 用户主动取消不算错误，不弹提示。
+      if (message.includes('cancel')) return
+      uni.showToast({ title: '未能选择照片', icon: 'none' })
+    },
+  })
+}
+
+function discardDraftPhoto() {
+  if (photoPath.value && photoPath.value !== originalPhotoPath.value) {
+    removePhoto(photoPath.value)
+  }
+}
+
+function clearPhoto() {
+  discardDraftPhoto()
+  photoPath.value = ''
 }
 
 function stepQuantity(delta) {
@@ -170,7 +240,15 @@ function validate() {
     error.value = `数量需要填写 1 到 ${limits.itemQuantity} 之间的整数`
     return null
   }
-  return { name: cleanName, quantity }
+  // 临时路径（H5 blob、未复制成功的相机路径）不写进数据，避免重启后变成死链。
+  const storedPhoto = isManagedPhoto(photoPath.value) ? photoPath.value : ''
+  return { name: cleanName, quantity, photoPath: storedPhoto }
+}
+
+function cleanupReplacedPhoto(nextPhotoPath) {
+  if (originalPhotoPath.value && originalPhotoPath.value !== nextPhotoPath) {
+    removePhoto(originalPhotoPath.value)
+  }
 }
 
 function handleSave(continueAdding) {
@@ -182,6 +260,7 @@ function handleSave(continueAdding) {
   try {
     if (isEdit.value) {
       actions.updateItem(itemId.value, payload)
+      cleanupReplacedPhoto(payload.photoPath)
       uni.showToast({ title: '物品已更新', icon: 'none' })
       goBack()
       return
@@ -217,6 +296,7 @@ function confirmDelete() {
       if (!res.confirm) return
       try {
         actions.deleteItem(target.id)
+        removePhoto(target.photoPath)
         uni.showToast({ title: '物品已删除', icon: 'none' })
         goBack()
       } catch (err) {
@@ -332,6 +412,68 @@ function goBack() {
   background: transparent;
   border-right: 1rpx solid var(--c-line);
   border-left: 1rpx solid var(--c-line);
+}
+
+.photo-actions {
+  display: flex;
+  margin-top: 14rpx;
+}
+
+.photo-actions__btn {
+  flex: 1;
+  height: 76rpx;
+  font-size: 25rpx;
+}
+
+.photo-actions__btn + .photo-actions__btn {
+  margin-left: 16rpx;
+}
+
+.photo-preview {
+  display: flex;
+  align-items: center;
+  padding: 18rpx 20rpx;
+  background: var(--c-surface);
+  border: 1rpx solid var(--c-line);
+  border-radius: 18rpx;
+}
+
+.photo-preview__img {
+  width: 150rpx;
+  height: 150rpx;
+  margin-right: 20rpx;
+  border-radius: 14rpx;
+}
+
+.photo-preview__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.photo-preview__state {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--c-ink-2);
+}
+
+.photo-preview__actions {
+  display: flex;
+  margin-top: 14rpx;
+}
+
+.photo-preview__action {
+  padding: 8rpx 20rpx;
+  margin-right: 12rpx;
+  font-size: 23rpx;
+  color: var(--c-accent);
+  background: var(--c-accent-soft);
+  border-radius: 999rpx;
+}
+
+.photo-preview__action--danger {
+  color: #a83e21;
+  background: #fbeae4;
 }
 
 .photo {
