@@ -82,6 +82,37 @@ export function deleteItem(itemId) {
   })
 }
 
+/**
+ * 移箱：物品只关联 boxId，改动后来源箱和目标箱的清单立即同步。
+ * 只允许在同一搬家内移动，避免把物品挂到别的搬家的箱子上。
+ */
+export function moveItem(itemId, targetBoxId) {
+  return mutate((db) => {
+    const target = db.boxes.find((entry) => entry.id === targetBoxId)
+    if (!target) throw new NotFoundError('目标箱子不存在')
+
+    const item = db.items.find((entry) => entry.id === itemId)
+    if (!item) throw new NotFoundError('物品不存在')
+
+    const source = db.boxes.find((entry) => entry.id === item.boxId) || null
+    if (source && source.id === target.id) {
+      throw new ValidationError('物品已经在这个箱子里')
+    }
+    if (source && source.moveId !== target.moveId) {
+      throw new ValidationError('不能移到其他搬家的箱子')
+    }
+
+    item.boxId = target.id
+    const now = Date.now()
+    if (source) source.updatedAt = now
+    target.updatedAt = now
+    const move = db.moves.find((entry) => entry.id === target.moveId)
+    if (move) move.updatedAt = now
+
+    return { item, fromBox: source, toBox: target }
+  })
+}
+
 export function countItems(boxId) {
   return loadDb().items.filter((item) => item.boxId === boxId).length
 }

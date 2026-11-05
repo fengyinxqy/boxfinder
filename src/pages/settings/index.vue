@@ -23,6 +23,10 @@
         <text class="step__no">4</text>
         <text class="step__text">把「3 号箱」这样的编号写在纸箱上，按房间搬运。</text>
       </view>
+      <view class="step">
+        <text class="step__no">5</text>
+        <text class="step__text">在搬家详情搜索物品名称或箱号，随时定位东西在哪；封箱、搬运、拆箱时切换箱子状态。</text>
+      </view>
     </view>
 
     <view class="card">
@@ -63,7 +67,7 @@
       </view>
       <view class="row">
         <text class="row__label">版本</text>
-        <text class="row__value">v0.3.0（M1 + M2 + M3）</text>
+        <text class="row__value">v0.4.0（M1–M4）</text>
       </view>
       <view class="row">
         <text class="row__label">技术栈</text>

@@ -20,15 +20,44 @@
           <text class="stat__label">下一个箱号</text>
         </view>
       </view>
+
+      <view class="progress">
+        <view class="progress__head">
+          <text class="progress__label">拆箱进度</text>
+          <text class="progress__value">{{ stats.unpacked }} / {{ stats.total }} 箱</text>
+        </view>
+        <view class="progress__track">
+          <view class="progress__fill" :style="{ width: progressPercent + '%' }"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="search-entry" @tap="goSearch">
+      <text class="search-entry__icon">⌕</text>
+      <text class="search-entry__text">搜索物品名称，或直接输箱号</text>
+      <text class="search-entry__arrow">›</text>
     </view>
 
     <view class="section-head">
       <text class="section-title">箱子列表</text>
-      <text class="section-count">{{ boxes.length }} 个</text>
+      <text class="section-count">{{ filteredBoxes.length }} 个</text>
     </view>
 
-    <view v-if="boxes.length" class="box-list">
-      <view v-for="box in boxes" :key="box.id" class="box-row" @tap="goBox(box)">
+    <view class="filters">
+      <view
+        v-for="item in filters"
+        :key="item.key"
+        class="filter"
+        :class="{ 'filter--on': statusFilter === item.key }"
+        @tap="statusFilter = item.key"
+      >
+        <text class="filter__label">{{ item.label }}</text>
+        <text class="filter__count">{{ item.count }}</text>
+      </view>
+    </view>
+
+    <view v-if="filteredBoxes.length" class="box-list">
+      <view v-for="box in filteredBoxes" :key="box.id" class="box-row" @tap="goBox(box)">
         <view class="box-tag">
           <text class="box-tag__num">{{ box.no }}</text>
           <text class="box-tag__unit">号箱</text>
@@ -40,6 +69,10 @@
         <StatusChip :status="box.status" />
       </view>
     </view>
+
+    <EmptyState v-else-if="boxes.length" title="这个状态下没有箱子" description="切换到「全部」或别的状态看看。">
+      <button class="btn btn--ghost" hover-class="none" @tap="statusFilter = 'all'">查看全部箱子</button>
+    </EmptyState>
 
     <EmptyState v-else title="还没有箱子" description="新建箱子后会自动分配箱号，从 1 号开始。">
       <button class="btn btn--ghost" hover-class="none" @tap="openCreate">添加第一个箱子</button>
@@ -69,6 +102,7 @@ import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { actions, refresh, store } from '../../store/index.js'
 import { formatDate } from '../../utils/format.js'
+import { BOX_STATUS_LIST } from '../../constants/index.js'
 import BoxFormDialog from '../../components/BoxFormDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import StatusChip from '../../components/StatusChip.vue'
@@ -76,6 +110,7 @@ import StatusChip from '../../components/StatusChip.vue'
 const moveId = ref('')
 const dialogVisible = ref(false)
 const saving = ref(false)
+const statusFilter = ref('all')
 
 const move = computed(() => store.db.moves.find((item) => item.id === moveId.value) || null)
 
@@ -88,11 +123,34 @@ const boxes = computed(() =>
 const stats = computed(() => {
   const list = boxes.value
   const maxNo = list.reduce((max, box) => Math.max(max, Number(box.no) || 0), 0)
+  const count = (status) => list.filter((box) => box.status === status).length
   return {
     total: list.length,
-    unpacked: list.filter((box) => box.status === 'unpacked').length,
+    packing: count('packing'),
+    sealed: count('sealed'),
+    moved: count('moved'),
+    unpacked: count('unpacked'),
     nextNo: Math.max(Number(move.value && move.value.nextBoxNo) || 1, maxNo + 1),
   }
+})
+
+const filteredBoxes = computed(() => {
+  if (statusFilter.value === 'all') return boxes.value
+  return boxes.value.filter((box) => box.status === statusFilter.value)
+})
+
+const filters = computed(() => [
+  { key: 'all', label: '全部', count: stats.value.total },
+  ...BOX_STATUS_LIST.map((status) => ({
+    key: status.key,
+    label: status.label,
+    count: stats.value[status.key],
+  })),
+])
+
+const progressPercent = computed(() => {
+  if (!stats.value.total) return 0
+  return Math.round((stats.value.unpacked / stats.value.total) * 100)
 })
 
 onLoad((options) => {
@@ -112,6 +170,10 @@ function openCreate() {
 
 function goBox(box) {
   uni.navigateTo({ url: `/pages/box/detail?id=${box.id}` })
+}
+
+function goSearch() {
+  uni.navigateTo({ url: `/pages/search/index?id=${moveId.value}` })
 }
 
 function goHome() {
@@ -196,6 +258,104 @@ function handleCreate(payload) {
 .stat__divider {
   width: 1rpx;
   background: var(--c-line);
+}
+
+.progress {
+  padding-top: 22rpx;
+  margin-top: 22rpx;
+  border-top: 1rpx solid var(--c-line);
+}
+
+.progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.progress__label {
+  font-size: 22rpx;
+  color: var(--c-ink-3);
+}
+
+.progress__value {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: var(--c-ink-2);
+}
+
+.progress__track {
+  height: 12rpx;
+  overflow: hidden;
+  background: var(--c-accent-soft);
+  border-radius: 999rpx;
+}
+
+.progress__fill {
+  height: 100%;
+  background: var(--c-accent);
+  border-radius: 999rpx;
+  transition: width 0.25s ease-out;
+}
+
+.search-entry {
+  display: flex;
+  align-items: center;
+  height: 84rpx;
+  padding: 0 26rpx;
+  margin-bottom: 24rpx;
+  color: var(--c-ink-3);
+  background: var(--c-paper);
+  border: 1rpx solid var(--c-line-strong);
+  border-radius: 999rpx;
+}
+
+.search-entry__icon {
+  margin-right: 12rpx;
+  font-size: 32rpx;
+}
+
+.search-entry__text {
+  flex: 1;
+  font-size: 25rpx;
+}
+
+.search-entry__arrow {
+  font-size: 36rpx;
+  line-height: 1;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 18rpx;
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  padding: 10rpx 20rpx;
+  margin: 0 12rpx 12rpx 0;
+  font-size: 23rpx;
+  color: var(--c-ink-2);
+  background: var(--c-paper);
+  border: 1rpx solid var(--c-line);
+  border-radius: 999rpx;
+}
+
+.filter--on {
+  color: var(--c-accent);
+  background: var(--c-accent-soft);
+  border-color: #e3b49c;
+}
+
+.filter__label {
+  font-weight: 500;
+}
+
+.filter__count {
+  margin-left: 8rpx;
+  opacity: 0.75;
 }
 
 .box-row {

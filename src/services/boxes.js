@@ -1,4 +1,4 @@
-import { LIMITS } from '../constants/index.js'
+import { BOX_STATUS, LIMITS } from '../constants/index.js'
 import { NotFoundError, ValidationError } from '../utils/errors.js'
 import { createId } from '../utils/id.js'
 import { loadDb, mutate } from './db.js'
@@ -92,6 +92,27 @@ export function deleteBox(boxId) {
     const move = db.moves.find((item) => item.id === removed.moveId)
     if (move) move.updatedAt = Date.now()
     return removed
+  })
+}
+
+/**
+ * 状态流转：装箱中 → 已封箱 → 已搬运 → 已拆箱。
+ * 第一版不做前后顺序限制，允许直接改回之前的任何状态。
+ */
+export function setBoxStatus(boxId, status) {
+  if (!BOX_STATUS[status]) throw new ValidationError('箱子状态无效')
+
+  return mutate((db) => {
+    const box = db.boxes.find((entry) => entry.id === boxId)
+    if (!box) throw new NotFoundError('箱子不存在')
+    if (box.status === status) return box
+
+    const now = Date.now()
+    box.status = status
+    box.updatedAt = now
+    const move = db.moves.find((entry) => entry.id === box.moveId)
+    if (move) move.updatedAt = now
+    return box
   })
 }
 
