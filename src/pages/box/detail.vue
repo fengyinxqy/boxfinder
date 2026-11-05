@@ -51,6 +51,7 @@
 
     <view v-if="items.length" class="item-list">
       <view v-for="item in items" :key="item.id" class="item-row" @tap="goEdit(item)">
+        <image v-if="item.photoPath" class="item-row__thumb" :src="item.photoPath" mode="aspectFill" />
         <view class="item-row__main">
           <text class="item-row__name">{{ item.name }}</text>
           <text class="item-row__meta">数量 ×{{ item.quantity }}</text>
@@ -95,6 +96,7 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { actions, refresh, store } from '../../store/index.js'
+import { removePhoto } from '../../services/photos.js'
 import { formatDate } from '../../utils/format.js'
 import { BOX_STATUS_LIST } from '../../constants/index.js'
 import BoxFormDialog from '../../components/BoxFormDialog.vue'
@@ -181,6 +183,7 @@ function confirmDeleteItem(item) {
       if (!res.confirm) return
       try {
         actions.deleteItem(item.id)
+        removePhoto(item.photoPath)
         uni.showToast({ title: '物品已删除', icon: 'none' })
       } catch (error) {
         uni.showToast({ title: error.message || '删除失败', icon: 'none' })
@@ -219,7 +222,10 @@ function confirmDelete() {
     success: (res) => {
       if (!res.confirm) return
       try {
+        // 先记下箱内照片，箱子删除并级联清理物品后一并删文件。
+        const photos = items.value.map((entry) => entry.photoPath).filter(Boolean)
         actions.deleteBox(target.id)
+        photos.forEach((photo) => removePhoto(photo))
         uni.showToast({ title: `已删除 ${target.no} 号箱`, icon: 'none' })
         goBack()
       } catch (error) {
@@ -400,6 +406,14 @@ function confirmDelete() {
   background: var(--c-surface);
   border: 1rpx solid var(--c-line);
   border-radius: 20rpx;
+}
+
+.item-row__thumb {
+  flex-shrink: 0;
+  width: 88rpx;
+  height: 88rpx;
+  margin-right: 18rpx;
+  border-radius: 12rpx;
 }
 
 .item-row__main {

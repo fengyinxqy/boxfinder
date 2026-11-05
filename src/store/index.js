@@ -1,5 +1,6 @@
 import { reactive, readonly } from 'vue'
 import { createEmptyDb, loadDb } from '../services/db.js'
+import * as backupApi from '../services/backup.js'
 import * as boxesApi from '../services/boxes.js'
 import * as itemsApi from '../services/items.js'
 import * as movesApi from '../services/moves.js'
@@ -77,5 +78,8 @@ export const actions = {
   },
   seedDemo() {
     return withRefresh(() => seedDemoData())
+  },
+  restoreBackup(text) {
+    return withRefresh(() => backupApi.restoreBackup(text))
   },
 }

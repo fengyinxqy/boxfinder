@@ -35,3 +35,11 @@ export class DataError extends AppError {
     this.name = 'DataError'
   }
 }
+
+/** 备份文件问题：消息直接给用户看，便于判断是粘贴不完整还是结构不对。 */
+export class BackupError extends AppError {
+  constructor(message) {
+    super(message, 'BACKUP')
+    this.name = 'BackupError'
+  }
+}
