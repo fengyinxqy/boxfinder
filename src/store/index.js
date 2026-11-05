@@ -1,6 +1,7 @@
 import { reactive, readonly } from 'vue'
 import { createEmptyDb, loadDb } from '../services/db.js'
 import * as boxesApi from '../services/boxes.js'
+import * as itemsApi from '../services/items.js'
 import * as movesApi from '../services/moves.js'
 import { seedDemoData } from '../services/seed.js'
 
@@ -58,6 +59,15 @@ export const actions = {
   },
   deleteBox(boxId) {
     return withRefresh(() => boxesApi.deleteBox(boxId))
+  },
+  createItem(boxId, payload) {
+    return withRefresh(() => itemsApi.createItem(boxId, payload))
+  },
+  updateItem(itemId, payload) {
+    return withRefresh(() => itemsApi.updateItem(itemId, payload))
+  },
+  deleteItem(itemId) {
+    return withRefresh(() => itemsApi.deleteItem(itemId))
   },
   seedDemo() {
     return withRefresh(() => seedDemoData())

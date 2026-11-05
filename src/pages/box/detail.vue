@@ -27,13 +27,23 @@
 
     <view class="section-head">
       <text class="section-title">箱内物品</text>
-      <text class="section-count">0 件</text>
+      <text class="section-count">{{ items.length }} 件</text>
     </view>
 
-    <view class="placeholder">
-      <text class="placeholder__title">物品录入将在 M3 开放</text>
-      <text class="placeholder__desc">下一阶段会在这里添加物品名称、数量和照片，并支持保存后继续添加。</text>
+    <view v-if="items.length" class="item-list">
+      <view v-for="item in items" :key="item.id" class="item-row" @tap="goEdit(item)">
+        <view class="item-row__main">
+          <text class="item-row__name">{{ item.name }}</text>
+          <text class="item-row__meta">数量 ×{{ item.quantity }}</text>
+        </view>
+        <text class="item-row__delete" @tap.stop="confirmDeleteItem(item)">删除</text>
+        <text class="item-row__arrow">›</text>
+      </view>
     </view>
+
+    <EmptyState v-else title="箱内还没有物品" description="记下名称和数量，之后就知道东西在几号箱。">
+      <button class="btn btn--ghost" hover-class="none" @tap="goAdd">添加第一件物品</button>
+    </EmptyState>
 
     <view class="actions">
       <button class="btn btn--ghost actions__btn" hover-class="none" @tap="openEdit">编辑箱子</button>
@@ -41,7 +51,7 @@
     </view>
 
     <view class="bottom-bar">
-      <button class="btn btn--primary btn--block btn--disabled" hover-class="none" disabled>添加物品（M3 开放）</button>
+      <button class="btn btn--primary btn--block" hover-class="none" @tap="goAdd">添加物品</button>
     </view>
 
     <BoxFormDialog v-model="dialogVisible" :box="box" :loading="saving" @submit="handleUpdate" />
@@ -68,6 +78,11 @@ const dialogVisible = ref(false)
 const saving = ref(false)
 
 const box = computed(() => store.db.boxes.find((item) => item.id === boxId.value) || null)
+const items = computed(() =>
+  store.db.items
+    .filter((item) => item.boxId === boxId.value)
+    .sort((a, b) => a.createdAt - b.createdAt)
+)
 
 onLoad((options) => {
   boxId.value = (options && options.id) || ''
@@ -79,6 +94,32 @@ onShow(() => {
 
 function openEdit() {
   dialogVisible.value = true
+}
+
+function goAdd() {
+  uni.navigateTo({ url: `/pages/item/form?boxId=${boxId.value}` })
+}
+
+function goEdit(item) {
+  uni.navigateTo({ url: `/pages/item/form?boxId=${boxId.value}&id=${item.id}` })
+}
+
+function confirmDeleteItem(item) {
+  uni.showModal({
+    title: '删除物品',
+    content: `确定删除「${item.name}」吗？`,
+    confirmText: '删除',
+    confirmColor: '#a83e21',
+    success: (res) => {
+      if (!res.confirm) return
+      try {
+        actions.deleteItem(item.id)
+        uni.showToast({ title: '物品已删除', icon: 'none' })
+      } catch (error) {
+        uni.showToast({ title: error.message || '删除失败', icon: 'none' })
+      }
+    },
+  })
 }
 
 function goBack() {
@@ -215,26 +256,49 @@ function confirmDelete() {
   color: #b6a184;
 }
 
-.placeholder {
-  padding: 40rpx 32rpx;
-  text-align: center;
-  border: 2rpx dashed var(--c-line-strong);
-  border-radius: 24rpx;
+.item-row {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 24rpx;
+  margin-bottom: 16rpx;
+  background: var(--c-surface);
+  border: 1rpx solid var(--c-line);
+  border-radius: 20rpx;
 }
 
-.placeholder__title {
+.item-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-row__name {
   display: block;
-  font-size: 28rpx;
+  overflow: hidden;
+  font-size: 29rpx;
   font-weight: 600;
-  color: var(--c-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.placeholder__desc {
+.item-row__meta {
   display: block;
-  max-width: 540rpx;
-  margin: 12rpx auto 0;
-  font-size: 23rpx;
-  line-height: 1.6;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--c-ink-3);
+}
+
+.item-row__delete {
+  padding: 8rpx 16rpx;
+  margin-right: 10rpx;
+  font-size: 22rpx;
+  color: #a83e21;
+  background: #fbeae4;
+  border-radius: 999rpx;
+}
+
+.item-row__arrow {
+  font-size: 38rpx;
+  line-height: 1;
   color: var(--c-ink-3);
 }
 

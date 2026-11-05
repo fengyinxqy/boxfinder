@@ -1,6 +1,6 @@
 {
   "name": "mover-box-helper",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "搬家装箱助手 - 微信小程序（uni-app + Vue 3，单人本地版）",
   "scripts": {

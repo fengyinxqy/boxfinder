@@ -6,6 +6,8 @@ export const LIMITS = {
   moveName: 20,
   room: 16,
   note: 60,
+  itemName: 30,
+  itemQuantity: 999,
 }
 
 export const BOX_STATUS = {
