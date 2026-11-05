@@ -19,6 +19,12 @@
       }
     },
     {
+      "path": "pages/item/form",
+      "style": {
+        "navigationBarTitleText": "添加物品"
+      }
+    },
+    {
       "path": "pages/settings/index",
       "style": {
         "navigationBarTitleText": "数据与说明"

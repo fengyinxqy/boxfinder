@@ -1,11 +1,11 @@
-# 搬家装箱助手（M1 + M2）
+# 搬家装箱助手（M1 + M2 + M3）
 
 面向个人用户的微信小程序：搬家时给纸箱写上编号，按编号管理目标房间和箱内物品。第一版是**单人本地版**，不登录、不上云。
 
 - 技术栈：uni-app + Vue 3（组合式 API）+ Vite
 - 目标平台：微信小程序
 - 数据：微信本地存储，单 key 存整库
-- 本轮范围：M1 脚手架 + 数据层，M2 搬家与箱子
+- 本轮范围：M1 脚手架 + 数据层，M2 搬家与箱子，M3 物品核心流程
 
 ## 当前进度
 
@@ -13,7 +13,7 @@
 |---|---|---|
 | M1 | 项目脚手架、数据结构、本地存储封装、示例数据 | 已完成 |
 | M2 | 搬家创建/改名/列表，箱子新建/编辑/编号/删除 | 已完成 |
-| M3 | 物品新增/编辑/删除/连续录入 | 未开始 |
+| M3 | 物品新增/编辑/删除/连续录入 | 已完成 |
 | M4 | 模糊搜索、物品移箱、箱子状态筛选与进度 | 未开始 |
 | M5 | 照片持久化、备份导出/恢复、空状态与校验 | 未开始 |
 | M6 | 真机走查、隐私说明、提审材料 | 未开始 |
@@ -30,7 +30,8 @@ mover-box-helper/
 │  ├─ pages/
 │  │  ├─ index/index.vue      # 搬家首页：列表、新建、改名
 │  │  ├─ move/detail.vue      # 搬家详情：箱子列表、添加箱子
-│  │  ├─ box/detail.vue       # 箱子详情：大号箱号、编辑/删除
+│  │  ├─ box/detail.vue       # 箱子详情：大号箱号、物品清单、编辑/删除
+│  │  ├─ item/form.vue        # 添加/编辑物品：名称、数量、连续添加
 │  │  └─ settings/index.vue   # 数据与说明、示例数据
 │  ├─ components/
 │  │  ├─ AppDialog.vue        # 底部弹窗容器
@@ -43,6 +44,7 @@ mover-box-helper/
 │  │  ├─ db.js                # schema、读写、迁移入口
 │  │  ├─ moves.js             # 搬家业务
 │  │  ├─ boxes.js             # 箱子业务与箱号分配
+│  │  ├─ items.js             # 物品业务与箱内清单
 │  │  └─ seed.js              # 示例数据（幂等）
 │  ├─ store/index.js          # 模块级响应式 store + actions
 │  ├─ constants/index.js      # schema 版本、状态枚举、长度限制
@@ -130,7 +132,19 @@ listMoves() / getMove(id) / createMove(name) / renameMove(id, name)
 // services/boxes.js
 listBoxes(moveId) / getBox(id) / createBox(moveId, { room, note })
 updateBox(id, { room, note }) / deleteBox(id) / boxStats(moveId)
+
+// services/items.js
+listItems(boxId) / getItem(id) / createItem(boxId, { name, quantity })
+updateItem(id, { name, quantity }) / deleteItem(id) / countItems(boxId)
 ```
+
+## 物品规则
+
+- 名称必填，最多 30 个字；数量默认 1，范围 1–999 的整数。
+- 物品只关联 `boxId`，清单一律显示所属箱号（如「3 号箱」）。
+- 支持「保存并继续添加」：保存后停留在表单并清空名称，连续录入同一箱物品。
+- 照片字段在 M3 只做占位，不调用相机/相册，数据里保留空 `photoPath`。
+- 删除物品只移除该条记录；删除箱子会级联删除箱内物品。
 
 ## 箱号规则
 
@@ -152,4 +166,4 @@ updateBox(id, { room, note }) / deleteBox(id) / boxStats(moveId)
 npm test
 ```
 
-测试覆盖：搬家创建/改名持久化、箱号连续分配、删除后不复用、跨“重启”继续递增、删除箱子级联清理物品、数据格式损坏保护、示例数据幂等、store 刷新、存储写入失败提示。
+测试覆盖：搬家创建/改名持久化、箱号连续分配、删除后不复用、跨“重启”继续递增、删除箱子级联清理物品、物品新增/编辑/删除与持久化、名称与数量校验、箱内清单归属、数据格式损坏保护、示例数据幂等、store 刷新、存储写入失败提示。

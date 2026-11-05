@@ -17,6 +17,10 @@
       </view>
       <view class="step">
         <text class="step__no">3</text>
+        <text class="step__text">进入箱子详情添加物品，写清名称和数量，可连续添加。</text>
+      </view>
+      <view class="step">
+        <text class="step__no">4</text>
         <text class="step__text">把「3 号箱」这样的编号写在纸箱上，按房间搬运。</text>
       </view>
     </view>
@@ -59,7 +63,7 @@
       </view>
       <view class="row">
         <text class="row__label">版本</text>
-        <text class="row__value">v0.2.0（M1 + M2）</text>
+        <text class="row__value">v0.3.0（M1 + M2 + M3）</text>
       </view>
       <view class="row">
         <text class="row__label">技术栈</text>
