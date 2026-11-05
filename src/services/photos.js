@@ -75,7 +75,8 @@ export function persistPhoto(tempPath, overrides = {}) {
   const dir = photoDirOf(env)
   try {
     if (typeof env.fs.mkdirSync === 'function') {
-      env.fs.mkdirSync({ dirPath: dir, recursive: true })
+      // 微信 FileSystemManager.mkdirSync 是位置参数：mkdirSync(dirPath, recursive)。
+      env.fs.mkdirSync(dir, true)
     }
   } catch (error) {
     // 目录已存在时部分基础库会抛错，继续尝试复制。

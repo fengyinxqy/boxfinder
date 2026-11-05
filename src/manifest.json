@@ -2,8 +2,8 @@
   "name": "搬家装箱助手",
   "appid": "",
   "description": "搬家装箱记录工具：箱号、目标房间与箱内物品",
-  "versionName": "0.5.0",
-  "versionCode": "500",
+  "versionName": "1.0.0",
+  "versionCode": "100",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
@@ -24,7 +24,7 @@
   },
   "quickapp": {},
   "mp-weixin": {
-    "appid": "touristappid",
+    "appid": "wx634a8ae7205ea24e",
     "setting": {
       "urlCheck": false,
       "es6": true,

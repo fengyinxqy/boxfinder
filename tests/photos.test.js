@@ -10,7 +10,8 @@ function createFakeFs(overrides = {}) {
   const calls = { copy: [], mkdir: [], unlink: [] }
   return {
     calls,
-    mkdirSync: vi.fn((options) => calls.mkdir.push(options && options.dirPath)),
+    // 微信 FileSystemManager.mkdirSync 是位置参数：mkdirSync(dirPath, recursive)
+    mkdirSync: vi.fn((dirPath, recursive) => calls.mkdir.push({ dirPath, recursive })),
     copyFileSync: vi.fn((from, to) => calls.copy.push({ from, to })),
     unlinkSync: vi.fn((filePath) => {
       calls.unlink.push(filePath)
@@ -33,7 +34,7 @@ describe('照片临时路径转永久路径', () => {
     expect(result.path.startsWith(`${USER_DATA}/photos/`)).toBe(true)
     expect(result.path.endsWith('.jpg')).toBe(true)
     expect(fs.calls.copy).toEqual([{ from: 'wxfile://tmp_abc.jpg', to: result.path }])
-    expect(fs.calls.mkdir[0]).toBe(`${USER_DATA}/photos`)
+    expect(fs.calls.mkdir[0]).toEqual({ dirPath: `${USER_DATA}/photos`, recursive: true })
   })
 
   it('已经是永久路径时不再复制', async () => {

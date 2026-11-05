@@ -497,6 +497,8 @@ async function main() {
     await waitText('我的搬家')
     await clickIn('.section-action', '数据与说明')
     await waitText('备份与恢复')
+    check('数据说明页版本为 v1.0.0', (await bodyText()).includes('v1.0.0'))
+    check('数据说明页写明照片本地保存', (await bodyText()).includes('小程序本地文件目录'))
     await clickIn('.row', '导出备份')
     await page.waitForSelector('.backup-box__text', { visible: true })
     await sleep(200)

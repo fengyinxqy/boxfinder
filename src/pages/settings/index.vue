@@ -71,7 +71,7 @@
       </view>
       <view class="row">
         <text class="row__label">版本</text>
-        <text class="row__value">v0.5.0（M1–M5）</text>
+        <text class="row__value">v1.0.0（正式版）</text>
       </view>
       <view class="row">
         <text class="row__label">技术栈</text>
