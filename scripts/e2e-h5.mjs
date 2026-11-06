@@ -676,7 +676,7 @@ async function main() {
     )
     check('我的页概览标注「含历史搬家」', mineText.includes('含历史搬家'))
     check('当前占用显示 KB', /当前占用\s*\d+\s*KB/.test(mineText))
-    check('版本行可读且非空', /v1\.0\.0 · (开发版|体验版|正式版)/.test(mineText))
+    check('版本行可读且非空', /v1\.1\.0 · (开发版|体验版|正式版)/.test(mineText))
     check('我的页不出现登录/账号/云端同步/实名', !/登录|账号|云端同步|实名/.test(mineText))
     await screenshot('06-mine-empty-profile.png')
 
@@ -743,13 +743,13 @@ async function main() {
 
     // ---- 隐私协议页：断网仍可读、无外链 ----
     await clickIn('.row', '隐私协议')
-    await waitText('搬家装箱助手隐私协议')
+    await waitText('封箱之前隐私协议')
     await navBack()
     await waitText('小王')
 
     await page.setOfflineMode(true)
     await clickIn('.row', '隐私协议')
-    await waitText('搬家装箱助手隐私协议')
+    await waitText('封箱之前隐私协议')
     const privacyText = await bodyText()
     check('断网后隐私协议仍可读', privacyText.includes('生效日期'))
     check('隐私协议含联系方式', privacyText.includes('572752189@qq.com'))
