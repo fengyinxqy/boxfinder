@@ -286,6 +286,26 @@ async function main() {
     )
     check('底部为「搬家 / 我的」两个 tab', tabLabels.length === 2 && tabLabels[0] === '搬家' && tabLabels[1] === '我的', JSON.stringify(tabLabels))
 
+    async function tabIcons() {
+      return page.$$eval('.uni-tabbar__icon img', (elements) =>
+        elements.map((element) => ({
+          src: element.getAttribute('src') || '',
+          ok: element.complete && element.naturalWidth > 0,
+        }))
+      )
+    }
+
+    await waitFor(async () => (await tabIcons()).every((icon) => icon.ok), 'tab 图标加载')
+    const initialIcons = await tabIcons()
+    check(
+      '初始 tab 图标：搬家选中态、我的未选中态、两张都不缺',
+      initialIcons.length === 2 &&
+        initialIcons[0].src.includes('tab-move-active.png') &&
+        initialIcons[1].src.includes('tab-mine.png') &&
+        initialIcons.every((icon) => icon.ok),
+      JSON.stringify(initialIcons)
+    )
+
     // ---- 创建搬家 ----
     await clickButton('新建搬家')
     await page.waitForSelector('.dialog__panel', { visible: true })
@@ -503,6 +523,36 @@ async function main() {
     await clickIn('.uni-tabbar__item', '我的')
     await waitText('未设置昵称')
     check('可从「搬家」tab 切到「我的」', (await bodyText()).includes('资料只保存在本机'))
+
+    await waitFor(async () => (await tabIcons()).every((icon) => icon.ok), '切换后 tab 图标加载')
+    const mineIcons = await tabIcons()
+    check(
+      '切换后 tab 图标：搬家未选中态、我的选中态',
+      mineIcons.length === 2 &&
+        mineIcons[0].src.includes('tab-move.png') &&
+        !mineIcons[0].src.includes('tab-move-active.png') &&
+        mineIcons[1].src.includes('tab-mine-active.png') &&
+        mineIcons.every((icon) => icon.ok),
+      JSON.stringify(mineIcons)
+    )
+    check(
+      '两种状态下 tab 文字均可读',
+      (await page.$$eval('.uni-tabbar__label', (elements) =>
+        elements.every((element) => (element.innerText || '').trim().length > 0)
+      )) === true
+    )
+
+    await waitFor(
+      async () =>
+        (await page.evaluate(() => {
+          const image = document.querySelector('.identity__avatar img')
+          return Boolean(
+            image && image.complete && image.naturalWidth > 0 && image.src.includes('avatar-default.png')
+          )
+        })) === true,
+      '默认头像加载'
+    )
+    check('默认头像正常显示、不裂图', true)
 
     let mineText = await bodyText()
     check(
