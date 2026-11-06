@@ -3,7 +3,7 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "搬家装箱助手"
+        "navigationBarTitleText": "封箱之前"
       }
     },
     {
@@ -71,7 +71,7 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "搬家装箱助手",
+    "navigationBarTitleText": "封箱之前",
     "navigationBarBackgroundColor": "#F6F1E7",
     "backgroundColor": "#F6F1E7",
     "backgroundTextStyle": "dark"

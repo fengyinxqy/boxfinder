@@ -99,7 +99,7 @@ export function parseBackup(text) {
     fail('备份内容格式不正确')
   }
   if (payload.app !== BACKUP_APP) {
-    fail('这不是搬家装箱助手的备份文件')
+    fail('这不是封箱之前的备份文件')
   }
 
   const version = Number(payload.schemaVersion)

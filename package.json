@@ -2,7 +2,7 @@
   "name": "mover-box-helper",
   "version": "1.0.0",
   "private": true,
-  "description": "搬家装箱助手 - 微信小程序（uni-app + Vue 3，单人本地版）",
+  "description": "封箱之前 - 微信小程序（uni-app + Vue 3，单人本地版）",
   "scripts": {
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin",

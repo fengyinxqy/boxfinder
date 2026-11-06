@@ -113,12 +113,12 @@ describe('备份校验', () => {
     expect(JSON.stringify(backup.loadBackupDb())).toBe(before)
   })
 
-  it('不是搬家装箱助手的备份时拒绝', async () => {
+  it('不是封箱之前的备份时拒绝', async () => {
     const { backup } = await createFixture()
     const before = JSON.stringify(backup.loadBackupDb())
     const text = JSON.stringify({ app: 'other-app', schemaVersion: 1, moves: [], boxes: [], items: [] })
 
-    expect(() => backup.restoreBackup(text)).toThrow('不是搬家装箱助手的备份文件')
+    expect(() => backup.restoreBackup(text)).toThrow('不是封箱之前的备份文件')
     expect(JSON.stringify(backup.loadBackupDb())).toBe(before)
   })
 

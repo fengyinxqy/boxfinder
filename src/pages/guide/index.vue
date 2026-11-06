@@ -74,7 +74,7 @@
       </view>
     </view>
 
-    <text class="footer">搬家装箱助手 · 单人本地版</text>
+    <text class="footer">封箱之前 · 单人本地版</text>
   </view>
 </template>
 

@@ -7,7 +7,7 @@
 
     <template v-else>
       <view class="intro">
-        <text class="intro__title">搬家装箱助手隐私协议</text>
+        <text class="intro__title">封箱之前隐私协议</text>
         <text class="intro__meta">生效日期：2026-11-06</text>
         <text class="intro__meta">更新说明：新增「用户信息（头像、昵称）」声明。</text>
       </view>
@@ -19,7 +19,7 @@
         </text>
       </view>
 
-      <text class="footer">搬家装箱助手 · 单人本地版</text>
+      <text class="footer">封箱之前 · 单人本地版</text>
     </template>
   </view>
 </template>
@@ -40,7 +40,7 @@ function buildSections() {
     {
       title: '一、我们是谁',
       paragraphs: [
-        '搬家装箱助手是一款本地记录工具，用于登记搬家箱子编号、目标房间与箱内物品。本小程序不提供账号体系，不需要登录。',
+        '封箱之前是一款本地记录工具，用于登记搬家箱子编号、目标房间与箱内物品。本小程序不提供账号体系，不需要登录。',
       ],
     },
     {

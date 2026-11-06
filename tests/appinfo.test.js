@@ -28,8 +28,8 @@ describe('版本行', () => {
     const appinfo = await import('../src/services/appinfo.js')
     const info = appinfo.resolveAppInfo({ miniProgram: { version: '', envVersion: 'develop' } })
 
-    expect(info.version).toBe('1.0.0')
-    expect(info.text).toBe('v1.0.0 · 开发版')
+    expect(info.version).toBe('1.1.0')
+    expect(info.text).toBe('v1.1.0 · 开发版')
   })
 
   it('getAccountInfoSync 不可用或抛错时也给出可用版本行', async () => {
@@ -38,12 +38,12 @@ describe('版本行', () => {
       throw new Error('not supported')
     }
 
-    expect(appinfo.resolveAppInfo().text).toBe('v1.0.0 · 开发版')
+    expect(appinfo.resolveAppInfo().text).toBe('v1.1.0 · 开发版')
   })
 
   it('未知环境标签按开发版处理', async () => {
     const appinfo = await import('../src/services/appinfo.js')
-    expect(appinfo.resolveAppInfo({ miniProgram: { version: '1.0.0', envVersion: 'unknown' } }).envLabel).toBe(
+    expect(appinfo.resolveAppInfo({ miniProgram: { version: '1.1.0', envVersion: 'unknown' } }).envLabel).toBe(
       '开发版'
     )
   })

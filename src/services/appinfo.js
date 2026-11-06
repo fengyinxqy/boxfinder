@@ -23,7 +23,7 @@ function readMiniProgram(overrides) {
 }
 
 /**
- * 版本行文案：`v1.0.0 · 正式版`。
+ * 版本行文案：`v1.1.0 · 正式版`。
  * 优先微信返回的版本号，开发版为空时退回 manifest.versionName；
  * 环境标签由 envVersion 映射，全部取不到也不留空。
  */
