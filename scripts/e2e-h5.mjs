@@ -306,6 +306,15 @@ async function main() {
       JSON.stringify(initialIcons)
     )
 
+    const initialColors = await page.$$eval('.uni-tabbar__label', (elements) =>
+      elements.map((element) => getComputedStyle(element).color)
+    )
+    check(
+      '初始文字色：选中 #c2542f、未选中 #9c8e7d',
+      initialColors[0] === 'rgb(194, 84, 47)' && initialColors[1] === 'rgb(156, 142, 125)',
+      JSON.stringify(initialColors)
+    )
+
     // ---- 创建搬家 ----
     await clickButton('新建搬家')
     await page.waitForSelector('.dialog__panel', { visible: true })
@@ -540,6 +549,14 @@ async function main() {
       (await page.$$eval('.uni-tabbar__label', (elements) =>
         elements.every((element) => (element.innerText || '').trim().length > 0)
       )) === true
+    )
+    const mineColors = await page.$$eval('.uni-tabbar__label', (elements) =>
+      elements.map((element) => getComputedStyle(element).color)
+    )
+    check(
+      '切换后文字色随状态互换',
+      mineColors[0] === 'rgb(156, 142, 125)' && mineColors[1] === 'rgb(194, 84, 47)',
+      JSON.stringify(mineColors)
     )
 
     await waitFor(
