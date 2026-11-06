@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--with-bar">
+  <view class="page page--with-bar page--tabbar">
     <view class="hero">
       <view class="hero__copy">
         <text class="hero__kicker">MOVE · PACK</text>
@@ -20,7 +20,6 @@
 
     <view class="section-head">
       <text class="section-title">我的搬家</text>
-      <text class="section-action" @tap="goSettings">数据与说明</text>
     </view>
 
     <view v-if="moves.length" class="move-list">
@@ -46,10 +45,10 @@
       <text class="note__item">· 搜物品名称或箱号，结果显示「3 号箱 · 书房」</text>
       <text class="note__item">· 物品可以移箱，箱子按封箱、搬运、拆箱推进</text>
       <text class="note__item">· 数据保存在本机，关闭重进不会丢</text>
-      <text class="note__item note__item--muted">· 备份与恢复将在后续里程碑开放</text>
+      <text class="note__item note__item--muted">· 备份与恢复、示例数据在底部「我的」页</text>
     </view>
 
-    <view class="bottom-bar">
+    <view class="bottom-bar bottom-bar--tabbar">
       <button class="btn btn--primary btn--block" hover-class="none" @tap="openCreate">新建搬家</button>
     </view>
 
@@ -89,10 +88,6 @@ function openRename(move) {
 
 function goMove(move) {
   uni.navigateTo({ url: `/pages/move/detail?id=${move.id}` })
-}
-
-function goSettings() {
-  uni.navigateTo({ url: '/pages/settings/index' })
 }
 
 function handleSubmit(name) {

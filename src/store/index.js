@@ -4,7 +4,8 @@ import * as backupApi from '../services/backup.js'
 import * as boxesApi from '../services/boxes.js'
 import * as itemsApi from '../services/items.js'
 import * as movesApi from '../services/moves.js'
-import { seedDemoData } from '../services/seed.js'
+import { clearAllLocalData } from '../services/reset.js'
+import { removeDemoData, seedDemoData } from '../services/seed.js'
 
 const state = reactive({
   db: createEmptyDb(),
@@ -78,6 +79,12 @@ export const actions = {
   },
   seedDemo() {
     return withRefresh(() => seedDemoData())
+  },
+  removeDemo(overrides) {
+    return withRefresh(() => removeDemoData(overrides))
+  },
+  clearAllData(overrides) {
+    return withRefresh(() => clearAllLocalData(overrides))
   },
   restoreBackup(text) {
     return withRefresh(() => backupApi.restoreBackup(text))

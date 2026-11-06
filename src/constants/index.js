@@ -8,6 +8,8 @@ export const LIMITS = {
   note: 60,
   itemName: 30,
   itemQuantity: 999,
+  /** 「我的」页昵称：trim 后 1–20 字。 */
+  nickname: 20,
 }
 
 export const BOX_STATUS = {

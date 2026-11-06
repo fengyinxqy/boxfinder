@@ -61,6 +61,30 @@ button::after {
   padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
 }
 
+/* tab 页：让出底部 tabBar，避免最后一张卡片被压住。 */
+.page--tabbar {
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+}
+
+.page--with-bar.page--tabbar {
+  padding-bottom: calc(208rpx + env(safe-area-inset-bottom));
+}
+
+/* #ifdef H5 */
+/* H5 的 tabBar 由 uni-app 渲染在页面内，额外让出约 100rpx（≈50px）。 */
+.page--tabbar {
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+}
+
+.page--with-bar.page--tabbar {
+  padding-bottom: calc(308rpx + env(safe-area-inset-bottom));
+}
+
+.bottom-bar--tabbar {
+  bottom: calc(100rpx + env(safe-area-inset-bottom));
+}
+/* #endif */
+
 .section-head {
   display: flex;
   align-items: baseline;

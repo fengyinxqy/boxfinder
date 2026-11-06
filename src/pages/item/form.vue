@@ -108,6 +108,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { actions, refresh, store } from '../../store/index.js'
 import { LIMITS } from '../../constants/index.js'
 import { isManagedPhoto, persistPhoto, removePhoto } from '../../services/photos.js'
+import { ensurePrivacyAuthorized } from '../../services/privacy.js'
 import EmptyState from '../../components/EmptyState.vue'
 
 const limits = LIMITS
@@ -157,7 +158,14 @@ function previewPhoto() {
   uni.previewImage({ urls: [photoPath.value] })
 }
 
-function chooseFrom(source) {
+async function chooseFrom(source) {
+  // 拍照/选图属于隐私接口：未同意《用户隐私保护指引》时不继续调用，给出可读提示。
+  const gate = await ensurePrivacyAuthorized()
+  if (!gate.ok) {
+    error.value = gate.message
+    return
+  }
+
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],

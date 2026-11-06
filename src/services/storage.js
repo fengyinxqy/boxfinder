@@ -37,15 +37,22 @@ export function removeRaw(key) {
   }
 }
 
+/**
+ * 当前占用。ok=false 表示当前环境取不到（页面显示「—」而不是误导性的 0 KB）。
+ */
 export function getStorageUsage() {
   try {
     const info = uni.getStorageInfoSync()
+    if (!info || typeof info !== 'object') {
+      return { ok: false, currentSize: 0, limitSize: 0 }
+    }
     return {
-      currentSize: info.currentSize || 0,
-      limitSize: info.limitSize || 0,
+      ok: true,
+      currentSize: Number(info.currentSize) || 0,
+      limitSize: Number(info.limitSize) || 0,
     }
   } catch (error) {
     console.warn('[storage] getStorageInfoSync failed:', error)
-    return { currentSize: 0, limitSize: 0 }
+    return { ok: false, currentSize: 0, limitSize: 0 }
   }
 }
