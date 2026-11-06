@@ -280,6 +280,9 @@ async function main() {
     await sleep(900)
     await waitText('还没有搬家记录')
     check('首页空状态正常', true)
+    await waitText('每件物品，都有去处')
+    check('首页 Hero 文案与设计图一致', (await bodyText()).includes('写好箱号，再开始装箱'))
+    check('首页使用说明为 4 条编号步骤', (await page.$$eval('.guide-step', (elements) => elements.length)) === 4)
 
     const tabLabels = await page.$$eval('.uni-tabbar__label', (elements) =>
       elements.map((element) => (element.innerText || '').trim())
@@ -323,13 +326,25 @@ async function main() {
     await page.waitForSelector('.dialog__panel', { hidden: true })
     await waitText(MOVE_NAME)
     check('创建「我的第一次搬家」', true)
+    check('首页搬家行显示创建日期与箱子数', /创建 · 0 个箱子/.test(await bodyText()))
+    const renameHit = await page.evaluate(() => {
+      const element = document.querySelector('.move-card__rename')
+      const rect = element.getBoundingClientRect()
+      return { width: Math.round(rect.width), height: Math.round(rect.height) }
+    })
+    check('改名点击热区高度 ≥ 88rpx', renameHit.height >= 44, JSON.stringify(renameHit))
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await sleep(2200)
+    await screenshot('00-home.png')
 
     await clickIn('.move-card', MOVE_NAME)
     await waitText('箱子列表')
+    await waitText('还没有箱子')
+    check('0 个箱子时显示空状态', (await bodyText()).includes('还没有箱子'))
 
     // ---- 5 个箱子 ----
     for (let index = 0; index < ROOMS.length; index += 1) {
-      await clickButton('添加箱子')
+      await clickButton('新建箱子')
       await page.waitForSelector('.dialog__panel', { visible: true })
       await fillInput(ROOMS[index])
       await clickButton('保存')
@@ -337,6 +352,40 @@ async function main() {
       await waitFor(async () => (await count('.box-row')) === index + 1, `第 ${index + 1} 个箱子`)
     }
     check('5 个箱子按 1–5 号编号', (await count('.box-row')) === 5)
+    const statLabels = await page.$$eval('.stat__label', (elements) =>
+      elements.map((element) => (element.innerText || '').trim())
+    )
+    check(
+      '统计三列为箱子总数 / 已拆箱 / 下一个箱号',
+      JSON.stringify(statLabels) === JSON.stringify(['箱子总数', '已拆箱', '下一个箱号']),
+      JSON.stringify(statLabels)
+    )
+    const badgeNos = await page.$$eval('.box-tag__num', (elements) =>
+      elements.map((element) => (element.innerText || '').trim())
+    )
+    check('箱号徽标来自数据且为 1–5', JSON.stringify(badgeNos) === JSON.stringify(['1', '2', '3', '4', '5']), JSON.stringify(badgeNos))
+    const filterLabels = await page.$$eval('.filter__label', (elements) =>
+      elements.map((element) => (element.innerText || '').trim())
+    )
+    check('筛选 chips 为全部 + 四态', filterLabels.length === 5 && filterLabels[0] === '全部', JSON.stringify(filterLabels))
+    check(
+      '筛选 chips 默认选中「全部」',
+      (await page.$$eval('.filter--on .filter__label', (elements) =>
+        elements.map((element) => (element.innerText || '').trim())
+      )).join('') === '全部'
+    )
+    check(
+      '筛选 chips 各自带数量',
+      (
+        await page.$$eval('.filter__count', (elements) =>
+          elements.map((element) => (element.innerText || '').trim())
+        )
+      ).every((value) => /^\d+$/.test(value))
+    )
+    check('进度条轨道与填充存在', (await page.$('.progress__track')) !== null && (await page.$('.progress__fill')) !== null)
+    check('进度百分比显示 0%', (await page.$eval('.progress__percent', (element) => element.innerText.trim())) === '0%')
+    check('箱号规则提示文案', (await bodyText()).includes('箱号只增不减，不复用已删除箱号'))
+    await sleep(2200)
     await screenshot('01-move-boxes.png')
 
     // ---- 30 件物品（每箱一次「保存并继续添加」连续录入）----
@@ -368,16 +417,37 @@ async function main() {
       await waitText('箱子列表')
     }
     check('合计 30 件物品', TOTAL_ITEMS === 30)
+    const firstBoxSub = await page.$eval('.box-row__sub', (element) => element.innerText.trim())
+    check('箱子行次行显示前 3 个物品名', firstBoxSub === '被子、枕头、床单', firstBoxSub)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await sleep(2200)
+    await screenshot('01-move-detail.png')
 
     // ---- 搜索名称 ----
     await clickIn('.search-entry')
     await page.waitForSelector('.search-box', { visible: true })
     await waitText('输入物品名称或箱号')
+    check('搜索页显示当前搬家名', (await bodyText()).includes(MOVE_NAME))
+    await fillInput('不存在的物品')
+    await waitText('没有找到')
+    check('无搜索结果时显示空状态', (await bodyText()).includes('没有找到'))
+    const clearHit = await page.evaluate(() => {
+      const element = document.querySelector('.search-box__clear')
+      if (!element) return null
+      const rect = element.getBoundingClientRect()
+      return { width: Math.round(rect.width), height: Math.round(rect.height) }
+    })
+    check('搜索清除按钮点击热区 ≥ 88rpx', Boolean(clearHit) && clearHit.height >= 44 && clearHit.width >= 44, JSON.stringify(clearHit))
+    await clickIn('.search-box__clear')
     await fillInput('充电器')
     await waitText('3 号箱 · 书房')
     check('搜索「充电器」显示「3 号箱 · 书房」', (await bodyText()).includes('3 号箱 · 书房'))
     check('搜索结果包含 65W 充电器', (await bodyText()).includes('65W 充电器'))
     check('搜索只返回 1 条物品结果', (await count('.item-row')) === 1)
+    const locText = await page.$eval('.item-row__loc', (element) => element.innerText.trim())
+    check('物品结果右侧为「箱号 · 房间」', locText === '3 号箱 · 书房', locText)
+    check('搜索页底部提示可点击查看', (await bodyText()).includes('点击结果查看所在箱子'))
+    await sleep(600)
     await screenshot('02-search-result.png')
 
     await clickIn('.item-row', '65W 充电器')
@@ -450,6 +520,7 @@ async function main() {
       '拆箱进度变为 1 / 5'
     )
     check('拆箱后进度显示 1 / 5 箱', (await page.$eval('.progress__value', (element) => element.innerText)).includes('1 / 5'))
+    check('拆箱后进度百分比 20%', (await page.$eval('.progress__percent', (element) => element.innerText.trim())) === '20%')
 
     // ---- 状态筛选 ----
     await clickIn('.filter', '已拆箱')
@@ -476,6 +547,33 @@ async function main() {
       '改回后进度回到 0 / 5'
     )
     check('状态改回后进度回到 0 / 5 箱', (await page.$eval('.progress__value', (element) => element.innerText)).includes('0 / 5'))
+
+    // ---- 窄屏 320px：不横向溢出、长名单行省略 ----
+    await page.setViewport({ width: 320, height: 700 })
+    await sleep(350)
+    const narrowCheck = await page.evaluate(() => {
+      const nodes = [
+        ...document.querySelectorAll('.move-head, .search-entry, .filter, .box-row, .rule-hint'),
+      ].map((element) => element.getBoundingClientRect())
+      return {
+        overflow: nodes.some((rect) => rect.left < -1 || rect.right > window.innerWidth + 1),
+        docWidth: document.documentElement.scrollWidth,
+        winWidth: window.innerWidth,
+      }
+    })
+    check(
+      '320px 宽搬家详情无横向溢出',
+      !narrowCheck.overflow && narrowCheck.docWidth <= narrowCheck.winWidth + 1,
+      JSON.stringify(narrowCheck)
+    )
+    const nameStyle = await page.$eval('.move-head__name', (element) => {
+      const style = getComputedStyle(element)
+      return [style.textOverflow, style.whiteSpace]
+    })
+    check('长搬家名单行省略', nameStyle[0] === 'ellipsis' && nameStyle[1] === 'nowrap', JSON.stringify(nameStyle))
+    await screenshot('13-narrow-320.png')
+    await page.setViewport({ width: 390, height: 844 })
+    await sleep(350)
 
     // ---- 重载持久化 ----
     await page.reload({ waitUntil: 'domcontentloaded' })
@@ -775,6 +873,56 @@ async function main() {
     await clickIn('.move-card', MOVE_NAME)
     await waitText('箱子列表')
     check('坏备份失败后箱子数量不变', (await count('.box-row')) === 5)
+
+    // ---- 320px 三屏横向溢出 ----
+    const narrowMoveId = await page.evaluate(() => {
+      const raw = localStorage.getItem('mover:db')
+      if (!raw) return ''
+      const parsed = JSON.parse(raw)
+      // uni-app H5 把对象包成 { type, data }，字符串则原样存储。
+      const db = parsed && parsed.data ? parsed.data : parsed
+      return db.moves[0].id
+    })
+    await page.setViewport({ width: 320, height: 700 })
+    await gotoPage('/pages/index/index', 'narrow-home')
+    await waitText(MOVE_NAME)
+    const homeNarrow = await page.evaluate(() => {
+      const nodes = [...document.querySelectorAll('.hero, .move-card, .guide-card, .section-action')].map(
+        (element) => element.getBoundingClientRect()
+      )
+      return {
+        overflow: nodes.some((rect) => rect.left < -1 || rect.right > window.innerWidth + 1),
+        docWidth: document.documentElement.scrollWidth,
+        winWidth: window.innerWidth,
+      }
+    })
+    check(
+      '320px 宽首页无横向溢出',
+      !homeNarrow.overflow && homeNarrow.docWidth <= homeNarrow.winWidth + 1,
+      JSON.stringify(homeNarrow)
+    )
+    await screenshot('13-narrow-home-320.png')
+
+    await gotoPage(`/pages/search/index?id=${narrowMoveId}`, 'narrow-search')
+    await fillInput('充电器')
+    await waitText('卫生间')
+    const searchNarrow = await page.evaluate(() => {
+      const nodes = [...document.querySelectorAll('.search-box, .result-group__title, .item-row, .result-hint')].map(
+        (element) => element.getBoundingClientRect()
+      )
+      return {
+        overflow: nodes.some((rect) => rect.left < -1 || rect.right > window.innerWidth + 1),
+        docWidth: document.documentElement.scrollWidth,
+        winWidth: window.innerWidth,
+      }
+    })
+    check(
+      '320px 宽搜索页无横向溢出',
+      !searchNarrow.overflow && searchNarrow.docWidth <= searchNarrow.winWidth + 1,
+      JSON.stringify(searchNarrow)
+    )
+    await screenshot('13-narrow-search-320.png')
+    await page.setViewport({ width: 390, height: 844 })
 
     check('页面无 JS 运行时错误', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300))
   } finally {

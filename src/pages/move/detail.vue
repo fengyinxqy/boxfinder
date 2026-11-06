@@ -1,9 +1,9 @@
 <template>
   <view v-if="move" class="page page--with-bar">
     <view class="move-head">
-      <text class="move-head__kicker">当前搬家</text>
       <text class="move-head__name">{{ move.name }}</text>
       <text class="move-head__date">{{ formatDate(move.createdAt) }} 创建</text>
+
       <view class="stats">
         <view class="stat">
           <text class="stat__num">{{ stats.total }}</text>
@@ -23,8 +23,8 @@
 
       <view class="progress">
         <view class="progress__head">
-          <text class="progress__label">拆箱进度</text>
-          <text class="progress__value">{{ stats.unpacked }} / {{ stats.total }} 箱</text>
+          <text class="progress__value">拆箱进度 {{ stats.unpacked }} / {{ stats.total }} 箱</text>
+          <text class="progress__percent">{{ progressPercent }}%</text>
         </view>
         <view class="progress__track">
           <view class="progress__fill" :style="{ width: progressPercent + '%' }"></view>
@@ -32,10 +32,13 @@
       </view>
     </view>
 
-    <view class="search-entry" @tap="goSearch">
-      <text class="search-entry__icon">⌕</text>
-      <text class="search-entry__text">搜索物品名称，或直接输箱号</text>
-      <text class="search-entry__arrow">›</text>
+    <view class="search-entry" hover-class="press" @tap="goSearch">
+      <view class="icon-search">
+        <view class="icon-search__ring"></view>
+        <view class="icon-search__handle"></view>
+      </view>
+      <text class="search-entry__text">搜索物品名称或箱号</text>
+      <text class="chevron">›</text>
     </view>
 
     <view class="section-head">
@@ -49,24 +52,30 @@
         :key="item.key"
         class="filter"
         :class="{ 'filter--on': statusFilter === item.key }"
+        hover-class="filter--press"
         @tap="statusFilter = item.key"
       >
-        <text class="filter__label">{{ item.label }}</text>
-        <text class="filter__count">{{ item.count }}</text>
+        <view class="filter__pill">
+          <text class="filter__label">{{ item.label }}</text>
+          <text class="filter__count">{{ item.count }}</text>
+        </view>
       </view>
     </view>
 
     <view v-if="filteredBoxes.length" class="box-list">
-      <view v-for="box in filteredBoxes" :key="box.id" class="box-row" @tap="goBox(box)">
+      <view v-for="box in filteredBoxes" :key="box.id" class="box-row" hover-class="press" @tap="goBox(box)">
         <view class="box-tag">
           <text class="box-tag__num">{{ box.no }}</text>
-          <text class="box-tag__unit">号箱</text>
         </view>
         <view class="box-row__body">
-          <text class="box-row__room">{{ box.room }}</text>
-          <text class="box-row__note">{{ box.note || '暂无备注' }}</text>
+          <view class="box-row__main">
+            <text class="box-row__title">{{ box.no }} 号箱</text>
+            <text class="box-row__room">{{ box.room }}</text>
+          </view>
+          <text class="box-row__sub">{{ summaryFor(box) }}</text>
         </view>
-        <StatusChip :status="box.status" />
+        <text class="box-row__status">{{ statusLabel(box.status) }}</text>
+        <text class="chevron">›</text>
       </view>
     </view>
 
@@ -78,13 +87,15 @@
       <button class="btn btn--ghost" hover-class="none" @tap="openCreate">添加第一个箱子</button>
     </EmptyState>
 
-    <view class="rule">
-      <text class="rule__title">编号规则</text>
-      <text class="rule__text">箱号只增不减。删除箱子后，下一个新箱子仍会使用新的编号，不会复用旧箱号。</text>
+    <view class="rule-hint">
+      <view class="rule-hint__icon">
+        <text class="rule-hint__i">i</text>
+      </view>
+      <text class="rule-hint__text">箱号只增不减，不复用已删除箱号。</text>
     </view>
 
     <view class="bottom-bar">
-      <button class="btn btn--primary btn--block" hover-class="none" @tap="openCreate">添加箱子</button>
+      <button class="btn btn--primary btn--block" hover-class="none" @tap="openCreate">新建箱子</button>
     </view>
 
     <BoxFormDialog v-model="dialogVisible" :next-no="stats.nextNo" :loading="saving" @submit="handleCreate" />
@@ -102,10 +113,9 @@ import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { actions, refresh, store } from '../../store/index.js'
 import { formatDate } from '../../utils/format.js'
-import { BOX_STATUS_LIST } from '../../constants/index.js'
+import { BOX_STATUS, BOX_STATUS_LIST } from '../../constants/index.js'
 import BoxFormDialog from '../../components/BoxFormDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import StatusChip from '../../components/StatusChip.vue'
 
 const moveId = ref('')
 const dialogVisible = ref(false)
@@ -134,6 +144,30 @@ const stats = computed(() => {
   }
 })
 
+/** 每箱前 3 个物品名，一次遍历内存快照，不额外查库。 */
+const itemNamesByBox = computed(() => {
+  const map = new Map()
+  for (const item of store.db.items) {
+    const names = map.get(item.boxId)
+    if (!names) {
+      map.set(item.boxId, [item.name])
+    } else if (names.length < 3) {
+      names.push(item.name)
+    }
+  }
+  return map
+})
+
+function summaryFor(box) {
+  const names = itemNamesByBox.value.get(box.id) || []
+  if (names.length) return names.join('、')
+  return box.note || '暂无物品'
+}
+
+function statusLabel(status) {
+  return (BOX_STATUS[status] || BOX_STATUS.packing).label
+}
+
 const filteredBoxes = computed(() => {
   if (statusFilter.value === 'all') return boxes.value
   return boxes.value.filter((box) => box.status === statusFilter.value)
@@ -159,9 +193,6 @@ onLoad((options) => {
 
 onShow(() => {
   refresh()
-  if (move.value) {
-    uni.setNavigationBarTitle({ title: move.value.name })
-  }
 })
 
 function openCreate() {
@@ -197,61 +228,57 @@ function handleCreate(payload) {
 </script>
 
 <style scoped>
+/* ---------- 搬家信息 ---------- */
 .move-head {
-  padding: 32rpx;
-  margin-bottom: 22rpx;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-3);
   background: var(--c-surface);
   border: 1rpx solid var(--c-line);
-  border-radius: 28rpx;
-}
-
-.move-head__kicker {
-  display: block;
-  font-size: 20rpx;
-  letter-spacing: 4rpx;
-  color: var(--c-ink-3);
+  border-radius: var(--r-card);
 }
 
 .move-head__name {
   display: block;
-  margin-top: 10rpx;
-  font-size: 40rpx;
+  overflow: hidden;
+  font-size: var(--fs-page);
   font-weight: 700;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .move-head__date {
   display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sub);
   color: var(--c-ink-3);
 }
 
 .stats {
   display: flex;
   align-items: stretch;
-  padding-top: 26rpx;
-  margin-top: 26rpx;
+  padding-top: var(--sp-2);
+  margin-top: var(--sp-2);
   border-top: 1rpx solid var(--c-line);
 }
 
 .stat {
   display: flex;
   flex: 1;
+  min-width: 0;
   flex-direction: column;
   align-items: center;
 }
 
 .stat__num {
-  font-size: 44rpx;
+  font-size: 48rpx;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--c-accent);
 }
 
 .stat__label {
-  margin-top: 4rpx;
-  font-size: 21rpx;
+  margin-top: 2rpx;
+  font-size: var(--fs-note);
   color: var(--c-ink-3);
 }
 
@@ -261,8 +288,8 @@ function handleCreate(payload) {
 }
 
 .progress {
-  padding-top: 22rpx;
-  margin-top: 22rpx;
+  padding-top: var(--sp-2);
+  margin-top: var(--sp-2);
   border-top: 1rpx solid var(--c-line);
 }
 
@@ -270,16 +297,16 @@ function handleCreate(payload) {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 10rpx;
-}
-
-.progress__label {
-  font-size: 22rpx;
-  color: var(--c-ink-3);
+  margin-bottom: var(--sp-1);
 }
 
 .progress__value {
-  font-size: 22rpx;
+  font-size: var(--fs-sub);
+  color: var(--c-ink-2);
+}
+
+.progress__percent {
+  font-size: var(--fs-sub);
   font-weight: 600;
   color: var(--c-ink-2);
 }
@@ -287,111 +314,124 @@ function handleCreate(payload) {
 .progress__track {
   height: 12rpx;
   overflow: hidden;
-  background: var(--c-accent-soft);
-  border-radius: 999rpx;
+  background: var(--c-line);
+  border-radius: var(--r-pill);
 }
 
 .progress__fill {
   height: 100%;
   background: var(--c-accent);
-  border-radius: 999rpx;
+  border-radius: var(--r-pill);
   transition: width 0.25s ease-out;
 }
 
+/* ---------- 搜索入口 ---------- */
 .search-entry {
   display: flex;
   align-items: center;
-  height: 84rpx;
-  padding: 0 26rpx;
-  margin-bottom: 24rpx;
-  color: var(--c-ink-3);
+  height: 88rpx;
+  padding: 0 var(--sp-3);
+  margin-bottom: var(--sp-2);
   background: var(--c-paper);
   border: 1rpx solid var(--c-line-strong);
-  border-radius: 999rpx;
-}
-
-.search-entry__icon {
-  margin-right: 12rpx;
-  font-size: 32rpx;
+  border-radius: var(--r-btn);
 }
 
 .search-entry__text {
   flex: 1;
-  font-size: 25rpx;
+  min-width: 0;
+  margin-left: var(--sp-2);
+  overflow: hidden;
+  font-size: var(--fs-sub);
+  color: var(--c-ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.search-entry__arrow {
-  font-size: 36rpx;
+.chevron {
+  flex-shrink: 0;
+  margin-left: var(--sp-1);
+  font-size: 40rpx;
   line-height: 1;
+  color: var(--c-decor);
 }
 
+.press {
+  opacity: 0.6;
+}
+
+/* ---------- 筛选 ---------- */
 .filters {
   display: flex;
   flex-wrap: wrap;
-  margin-bottom: 18rpx;
+  margin-bottom: var(--sp-1);
 }
 
+/* 外框保留 88rpx 点击热区，内层 pill 负责视觉高度 */
 .filter {
   display: flex;
   align-items: center;
-  padding: 10rpx 20rpx;
-  margin: 0 12rpx 12rpx 0;
-  font-size: 23rpx;
+  height: 88rpx;
+  margin: 0 var(--sp-2) 0 0;
+}
+
+.filter__pill {
+  display: flex;
+  align-items: center;
+  height: 64rpx;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-note);
   color: var(--c-ink-2);
-  background: var(--c-paper);
-  border: 1rpx solid var(--c-line);
-  border-radius: 999rpx;
+  background: var(--c-surface);
+  border: 1rpx solid var(--c-line-strong);
+  border-radius: var(--r-pill);
 }
 
-.filter--on {
-  color: var(--c-accent);
-  background: var(--c-accent-soft);
-  border-color: #e3b49c;
+.filter--on .filter__pill {
+  color: #fffdf8;
+  background: var(--c-ink);
+  border-color: var(--c-ink);
 }
 
-.filter__label {
-  font-weight: 500;
+.filter--press {
+  opacity: 0.7;
 }
 
 .filter__count {
-  margin-left: 8rpx;
-  opacity: 0.75;
+  margin-left: var(--sp-1);
+  opacity: 0.72;
 }
 
+/* ---------- 箱子行 ---------- */
 .box-row {
   display: flex;
   align-items: center;
-  padding: 22rpx 24rpx;
-  margin-bottom: 18rpx;
+  min-height: 120rpx;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
   background: var(--c-surface);
   border: 1rpx solid var(--c-line);
-  border-radius: 22rpx;
+  border-radius: var(--r-card);
 }
 
 .box-tag {
   display: flex;
-  flex-direction: column;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 96rpx;
-  height: 110rpx;
-  margin-right: 22rpx;
+  width: 88rpx;
+  height: 88rpx;
+  margin-right: var(--sp-3);
   background: #fff8ea;
-  border: 2rpx dashed #c9a87c;
-  border-radius: 12rpx;
+  border: 2rpx solid #c9a87c;
+  border-radius: var(--r-inner);
 }
 
 .box-tag__num {
-  font-size: 48rpx;
+  font-size: 40rpx;
   font-weight: 700;
   line-height: 1;
   color: #8a5a2b;
-}
-
-.box-tag__unit {
-  margin-top: 6rpx;
-  font-size: 19rpx;
-  color: #a98c63;
 }
 
 .box-row__body {
@@ -399,41 +439,77 @@ function handleCreate(payload) {
   min-width: 0;
 }
 
-.box-row__room {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 600;
+.box-row__main {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
 }
 
-.box-row__note {
-  display: block;
-  margin-top: 6rpx;
+.box-row__title {
+  flex-shrink: 0;
+  font-size: var(--fs-row);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.box-row__room {
+  min-width: 0;
+  margin-left: var(--sp-1);
   overflow: hidden;
-  font-size: 23rpx;
+  font-size: var(--fs-sub);
+  color: var(--c-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.box-row__sub {
+  display: block;
+  margin-top: 4rpx;
+  overflow: hidden;
+  font-size: var(--fs-note);
+  line-height: 1.4;
   color: var(--c-ink-3);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rule {
-  padding: 26rpx 28rpx;
-  margin-top: 30rpx;
-  border: 2rpx dashed var(--c-line-strong);
-  border-radius: 22rpx;
-}
-
-.rule__title {
-  display: block;
-  margin-bottom: 10rpx;
-  font-size: 24rpx;
-  font-weight: 600;
+.box-row__status {
+  flex-shrink: 0;
+  margin-left: var(--sp-2);
+  font-size: var(--fs-sub);
   color: var(--c-ink-2);
 }
 
-.rule__text {
-  display: block;
-  font-size: 23rpx;
-  line-height: 1.7;
+/* ---------- 编号提示 ---------- */
+.rule-hint {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-3) 0 var(--sp-2);
+}
+
+.rule-hint__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30rpx;
+  height: 30rpx;
+  margin-right: var(--sp-1);
+  border: 2rpx solid var(--c-decor);
+  border-radius: 50%;
+}
+
+.rule-hint__i {
+  font-size: 18rpx;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--c-ink-3);
+}
+
+.rule-hint__text {
+  flex: 1;
+  font-size: var(--fs-note);
+  line-height: 1.5;
   color: var(--c-ink-3);
 }
 </style>

@@ -33,7 +33,7 @@
     {
       "path": "pages/search/index",
       "style": {
-        "navigationBarTitleText": "搜索物品"
+        "navigationBarTitleText": "搜索定位"
       }
     },
     {

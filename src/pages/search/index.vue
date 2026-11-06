@@ -1,16 +1,23 @@
 <template>
   <view class="page">
+    <text v-if="moveName" class="search-move">{{ moveName }}</text>
+
     <view class="search-box">
-      <text class="search-box__icon">⌕</text>
+      <view class="icon-search">
+        <view class="icon-search__ring"></view>
+        <view class="icon-search__handle"></view>
+      </view>
       <input
         v-model="query"
         class="search-box__input"
-        placeholder="搜物品名称，或直接输箱号"
+        placeholder="搜索物品名称或箱号"
         placeholder-class="field__placeholder"
         confirm-type="search"
         :focus="autoFocus"
       />
-      <text v-if="query" class="search-box__clear" @tap="clearQuery">×</text>
+      <view v-if="query" class="search-box__clear" @tap="clearQuery">
+        <text class="search-box__clear-icon">×</text>
+      </view>
     </view>
 
     <view v-if="!query.trim()" class="hint">
@@ -21,32 +28,36 @@
     <template v-else>
       <view v-if="result.boxes.length" class="result-group">
         <text class="result-group__title">箱子</text>
-        <view v-for="row in result.boxes" :key="row.box.id" class="box-row" @tap="goBox(row.box)">
+        <view v-for="row in result.boxes" :key="row.box.id" class="box-row" hover-class="press" @tap="goBox(row.box)">
           <view class="box-tag">
             <text class="box-tag__num">{{ row.box.no }}</text>
-            <text class="box-tag__unit">号箱</text>
           </view>
           <view class="box-row__body">
-            <text class="box-row__room">{{ row.box.room }}</text>
+            <view class="box-row__main">
+              <text class="box-row__title">{{ row.box.no }} 号箱</text>
+              <text class="box-row__room">{{ row.box.room }}</text>
+            </view>
             <text class="box-row__meta">{{ row.itemCount }} 件物品 · {{ statusLabel(row.box.status) }}</text>
           </view>
-          <text class="row-arrow">›</text>
+          <text class="chevron">›</text>
         </view>
       </view>
 
       <view v-if="result.items.length" class="result-group">
         <text class="result-group__title">物品</text>
-        <view v-for="row in result.items" :key="row.item.id" class="item-row" @tap="goBox(row.box)">
+        <view v-for="row in result.items" :key="row.item.id" class="item-row" hover-class="press" @tap="goBox(row.box)">
           <view class="item-row__body">
             <text class="item-row__name">{{ row.item.name }}</text>
             <text class="item-row__qty">数量 ×{{ row.item.quantity }}</text>
           </view>
           <text class="item-row__loc">{{ row.box.no }} 号箱 · {{ row.box.room }}</text>
-          <text class="row-arrow">›</text>
+          <text class="chevron">›</text>
         </view>
       </view>
 
       <EmptyState v-if="!hasResults" title="没有找到" :description="`没有与「${query.trim()}」匹配的物品或箱号。`" />
+
+      <text v-if="hasResults" class="result-hint">点击结果查看所在箱子</text>
     </template>
   </view>
 </template>
@@ -66,6 +77,10 @@ const autoFocus = ref(false)
 // 直接读 store 快照：移箱或改状态后回到本页，结果自动重新计算。
 const result = computed(() => searchInDb(store.db, moveId.value, query.value))
 const hasResults = computed(() => result.value.items.length > 0 || result.value.boxes.length > 0)
+const moveName = computed(() => {
+  const move = store.db.moves.find((item) => item.id === moveId.value)
+  return move ? move.name : ''
+})
 
 onLoad((options) => {
   moveId.value = (options && options.id) || ''
@@ -90,106 +105,120 @@ function clearQuery() {
 </script>
 
 <style scoped>
+.search-move {
+  display: block;
+  overflow: hidden;
+  padding: var(--sp-1) 0 0;
+  font-size: var(--fs-sub);
+  color: var(--c-ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 搜索框 ---------- */
 .search-box {
   display: flex;
   align-items: center;
-  height: 92rpx;
-  padding: 0 24rpx;
-  margin: 8rpx 0 26rpx;
+  height: 88rpx;
+  padding: 0 var(--sp-3);
+  margin: var(--sp-2) 0 var(--sp-3);
   background: var(--c-paper);
   border: 1rpx solid var(--c-line-strong);
-  border-radius: 999rpx;
-}
-
-.search-box__icon {
-  margin-right: 14rpx;
-  font-size: 34rpx;
-  color: var(--c-ink-3);
+  border-radius: var(--r-btn);
 }
 
 .search-box__input {
   flex: 1;
+  min-width: 0;
   height: 100%;
-  font-size: 30rpx;
+  margin-left: var(--sp-2);
+  font-size: var(--fs-row);
 }
 
 .search-box__clear {
-  padding: 0 8rpx 0 18rpx;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  margin-right: calc(-1 * var(--sp-3));
+}
+
+.search-box__clear-icon {
   font-size: 36rpx;
   line-height: 1;
   color: var(--c-ink-3);
 }
 
+.press {
+  opacity: 0.6;
+}
+
+/* ---------- 初始提示 ---------- */
 .hint {
-  padding: 40rpx 32rpx;
-  margin-top: 12rpx;
-  background: rgba(255, 253, 248, 0.6);
-  border: 2rpx dashed var(--c-line-strong);
-  border-radius: 24rpx;
+  padding: var(--sp-4);
+  margin-top: var(--sp-1);
+  background: var(--c-surface);
+  border: 1rpx solid var(--c-line);
+  border-radius: var(--r-card);
 }
 
 .hint__title {
   display: block;
-  font-size: 28rpx;
+  font-size: var(--fs-row);
   font-weight: 600;
-  color: var(--c-ink-2);
 }
 
 .hint__text {
   display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sub);
   line-height: 1.7;
-  color: var(--c-ink-3);
+  color: var(--c-ink-2);
 }
 
+/* ---------- 结果 ---------- */
 .result-group {
-  margin-bottom: 28rpx;
+  margin-bottom: var(--sp-3);
 }
 
 .result-group__title {
   display: block;
-  padding: 4rpx 4rpx 14rpx;
-  font-size: 24rpx;
+  padding: 0 0 var(--sp-1);
+  font-size: var(--fs-section);
   font-weight: 600;
-  color: var(--c-ink-3);
-  letter-spacing: 2rpx;
 }
 
 .box-row {
   display: flex;
   align-items: center;
-  padding: 20rpx 24rpx;
-  margin-bottom: 16rpx;
+  min-height: 120rpx;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
   background: var(--c-surface);
   border: 1rpx solid var(--c-line);
-  border-radius: 22rpx;
+  border-radius: var(--r-card);
 }
 
 .box-tag {
   display: flex;
-  flex-direction: column;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 88rpx;
-  height: 100rpx;
-  margin-right: 20rpx;
+  height: 88rpx;
+  margin-right: var(--sp-3);
   background: #fff8ea;
-  border: 2rpx dashed #c9a87c;
-  border-radius: 12rpx;
+  border: 2rpx solid #c9a87c;
+  border-radius: var(--r-inner);
 }
 
 .box-tag__num {
-  font-size: 42rpx;
+  font-size: 40rpx;
   font-weight: 700;
   line-height: 1;
   color: #8a5a2b;
-}
-
-.box-tag__unit {
-  margin-top: 4rpx;
-  font-size: 18rpx;
-  color: #a98c63;
 }
 
 .box-row__body {
@@ -197,27 +226,45 @@ function clearQuery() {
   min-width: 0;
 }
 
-.box-row__room {
-  display: block;
-  font-size: 30rpx;
+.box-row__main {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.box-row__title {
+  flex-shrink: 0;
+  font-size: var(--fs-row);
   font-weight: 600;
+  line-height: 1.4;
+}
+
+.box-row__room {
+  min-width: 0;
+  margin-left: var(--sp-1);
+  overflow: hidden;
+  font-size: var(--fs-sub);
+  color: var(--c-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .box-row__meta {
   display: block;
-  margin-top: 6rpx;
-  font-size: 22rpx;
+  margin-top: 4rpx;
+  font-size: var(--fs-note);
   color: var(--c-ink-3);
 }
 
 .item-row {
   display: flex;
   align-items: center;
-  padding: 22rpx 24rpx;
-  margin-bottom: 16rpx;
+  min-height: 104rpx;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
   background: var(--c-surface);
   border: 1rpx solid var(--c-line);
-  border-radius: 20rpx;
+  border-radius: var(--r-card);
 }
 
 .item-row__body {
@@ -228,31 +275,42 @@ function clearQuery() {
 .item-row__name {
   display: block;
   overflow: hidden;
-  font-size: 29rpx;
+  font-size: var(--fs-row);
   font-weight: 600;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .item-row__qty {
   display: block;
-  margin-top: 6rpx;
-  font-size: 22rpx;
+  margin-top: 4rpx;
+  font-size: var(--fs-note);
   color: var(--c-ink-3);
 }
 
 .item-row__loc {
   flex-shrink: 0;
-  margin-left: 16rpx;
-  font-size: 24rpx;
+  margin-left: var(--sp-2);
+  font-size: var(--fs-sub);
   font-weight: 600;
   color: var(--c-accent);
+  white-space: nowrap;
 }
 
-.row-arrow {
-  margin-left: 12rpx;
-  font-size: 38rpx;
+.chevron {
+  flex-shrink: 0;
+  margin-left: var(--sp-1);
+  font-size: 40rpx;
   line-height: 1;
+  color: var(--c-decor);
+}
+
+.result-hint {
+  display: block;
+  padding: var(--sp-4) 0 calc(var(--sp-3) + env(safe-area-inset-bottom));
+  font-size: var(--fs-note);
   color: var(--c-ink-3);
+  text-align: center;
 }
 </style>
