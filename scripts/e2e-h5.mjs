@@ -281,6 +281,11 @@ async function main() {
     await waitText('还没有搬家记录')
     check('首页空状态正常', true)
 
+    const tabLabels = await page.$$eval('.uni-tabbar__label', (elements) =>
+      elements.map((element) => (element.innerText || '').trim())
+    )
+    check('底部为「搬家 / 我的」两个 tab', tabLabels.length === 2 && tabLabels[0] === '搬家' && tabLabels[1] === '我的', JSON.stringify(tabLabels))
+
     // ---- 创建搬家 ----
     await clickButton('新建搬家')
     await page.waitForSelector('.dialog__panel', { visible: true })
@@ -492,13 +497,106 @@ async function main() {
       })) === true
     )
 
-    // ---- 备份导出 ----
-    await gotoPage('/pages/index/index', 'backup-home')
+    // ---- 我的 tab：导航、身份卡、概览、版本 ----
+    await gotoPage('/pages/index/index', 'mine-home')
     await waitText('我的搬家')
-    await clickIn('.section-action', '数据与说明')
-    await waitText('备份与恢复')
-    check('数据说明页版本为 v1.0.0', (await bodyText()).includes('v1.0.0'))
-    check('数据说明页写明照片本地保存', (await bodyText()).includes('小程序本地文件目录'))
+    await clickIn('.uni-tabbar__item', '我的')
+    await waitText('未设置昵称')
+    check('可从「搬家」tab 切到「我的」', (await bodyText()).includes('资料只保存在本机'))
+
+    let mineText = await bodyText()
+    check(
+      '我的页概览为 1 次搬家 · 5 个箱子 · 31 件物品',
+      mineText.includes('1 次搬家') && mineText.includes('5 个箱子') && mineText.includes('31 件物品')
+    )
+    check('我的页概览标注「含历史搬家」', mineText.includes('含历史搬家'))
+    check('当前占用显示 KB', /当前占用\s*\d+\s*KB/.test(mineText))
+    check('版本行可读且非空', /v1\.0\.0 · (开发版|体验版|正式版)/.test(mineText))
+    check('我的页不出现登录/账号/云端同步/实名', !/登录|账号|云端同步|实名/.test(mineText))
+    await screenshot('06-mine-empty-profile.png')
+
+    // ---- 编辑资料：昵称写入独立 key，重启可见 ----
+    await clickIn('.identity__edit', '编辑资料')
+    await page.waitForSelector('.dialog__panel', { visible: true })
+    await fillInput('小王')
+    await clickButton('保存')
+    await page.waitForSelector('.dialog__panel', { hidden: true })
+    await waitText('小王')
+    const storedProfile = await page.evaluate(() => localStorage.getItem('mover:profile'))
+    check('昵称写入独立 key mover:profile', Boolean(storedProfile) && storedProfile.includes('小王'))
+    check(
+      '昵称不写进 mover:db',
+      await page.evaluate(() => {
+        const raw = localStorage.getItem('mover:db')
+        return !raw || !raw.includes('小王')
+      })
+    )
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await waitText('小王')
+    check('重启后昵称仍可见', (await bodyText()).includes('小王'))
+
+    // 昵称边界：全空格就地提示，不落库
+    await clickIn('.identity__edit', '编辑资料')
+    await page.waitForSelector('.dialog__panel', { visible: true })
+    await fillInput('   ')
+    await clickButton('保存')
+    await waitFor(async () => (await bodyText()).includes('请填写昵称'), '全空格昵称给出提示')
+    check('全空格昵称就地提示', (await bodyText()).includes('请填写昵称'))
+    await clickButton('取消')
+    await waitText('小王')
+    check('昵称校验失败后保留上次有效值', (await bodyText()).includes('小王'))
+
+    // ---- 示例数据：载入 / 不重复 / 移除 ----
+    await clickIn('.row', '载入示例数据')
+    await clickModalButton('确定')
+    await waitFor(async () => (await bodyText()).includes('2 次搬家'), '示例数据载入')
+    check('示例数据载入后可统计到 2 次搬家', (await bodyText()).includes('2 次搬家'))
+    check('存在示例数据时出现「移除示例数据」', (await bodyText()).includes('移除示例数据'))
+
+    await clickIn('.row', '载入示例数据')
+    await waitText('示例数据已存在')
+    check('重复载入提示「示例数据已存在」', true)
+
+    await clickIn('.row', '移除示例数据')
+    await clickModalButton('移除')
+    await waitFor(async () => (await bodyText()).includes('1 次搬家'), '示例数据移除')
+    check('移除示例数据后真实搬家仍在', (await bodyText()).includes('1 次搬家'))
+    check('移除示例数据后该行消失', !(await bodyText()).includes('移除示例数据'))
+
+    // ---- 使用说明页 ----
+    await clickIn('.row', '使用说明')
+    await waitText('五分钟上手')
+    const guideText = await bodyText()
+    check('使用说明含 5 步流程', guideText.includes('把「3 号箱」这样的编号写在纸箱上'))
+    check('使用说明含照片规则', guideText.includes('照片规则'))
+    check('使用说明含备份规则', guideText.includes('备份规则'))
+    check('使用说明含常见问题', guideText.includes('常见问题'))
+    await screenshot('07-guide.png')
+    await navBack()
+    await waitText('小王')
+
+    // ---- 隐私协议页：断网仍可读、无外链 ----
+    await clickIn('.row', '隐私协议')
+    await waitText('搬家装箱助手隐私协议')
+    await navBack()
+    await waitText('小王')
+
+    await page.setOfflineMode(true)
+    await clickIn('.row', '隐私协议')
+    await waitText('搬家装箱助手隐私协议')
+    const privacyText = await bodyText()
+    check('断网后隐私协议仍可读', privacyText.includes('生效日期'))
+    check('隐私协议含联系方式', privacyText.includes('572752189@qq.com'))
+    check('隐私协议含「用户信息（头像、昵称）」声明', privacyText.includes('用户信息（头像、昵称）'))
+    check('隐私协议声明不上传、不共享', privacyText.includes('不上传、不共享'))
+    check('隐私协议不引外链', (await page.$$eval('a', (elements) => elements.filter((e) => e.href).length)) === 0)
+    await screenshot('08-privacy.png')
+    await navBack()
+    await page.setOfflineMode(false)
+    await waitText('小王')
+
+    // ---- 备份导出（入口在我的）----
     await clickIn('.row', '导出备份')
     await page.waitForSelector('.backup-box__text', { visible: true })
     await sleep(200)
@@ -507,27 +605,27 @@ async function main() {
     check('导出内容包含导出时间', Boolean(exported) && exported.includes('"exportedAt"'))
     check('导出内容声明不含照片', Boolean(exported) && exported.includes('"photoIncluded": false'))
     check('导出内容不含照片路径', Boolean(exported) && !exported.includes('photoPath'))
+    check('导出内容不含昵称头像', Boolean(exported) && !exported.includes('小王') && !exported.includes('avatar'))
     check('导出内容包含 31 件物品', Boolean(exported) && exported.includes('"items": 31'))
-    await screenshot('06-backup-export.png')
+    await screenshot('09-backup-export.png')
     await clickButton('取消')
 
-    // ---- 清空后从导出内容恢复 ----
-    await page.evaluate(() => localStorage.clear())
-    await gotoPage('/pages/index/index', 'cleared-home')
-    await waitText('还没有搬家记录')
-    check('清空后首页为空', (await bodyText()).includes('还没有搬家记录'))
-
-    await clickIn('.section-action', '数据与说明')
-    await waitText('备份与恢复')
+    // ---- 同机恢复：记录替换，昵称头像不动 ----
     await clickIn('.row', '恢复备份')
+    await waitText('昵称和头像不会随备份恢复')
+    check('恢复弹窗写明资料不随备份恢复', (await bodyText()).includes('昵称和头像不会随备份恢复'))
     await page.waitForSelector('.backup-box__text', { visible: true })
     await fillTextarea(exported)
     await clickButton('校验并恢复')
     await clickModalButton('恢复')
     await page.waitForSelector('.backup-box__text', { hidden: true })
-    await gotoPage('/pages/index/index', 'restored-home')
-    await waitText(MOVE_NAME)
-    check('恢复后搬家记录回来', (await bodyText()).includes(MOVE_NAME))
+    await waitFor(async () => (await bodyText()).includes('31 件物品'), '恢复后概览更新')
+    check('同机恢复后概览仍为 31 件物品', (await bodyText()).includes('31 件物品'))
+    check('同机恢复不动昵称', (await bodyText()).includes('小王'))
+
+    await clickIn('.uni-tabbar__item', '搬家')
+    await waitText('我的搬家')
+    check('恢复到「搬家」tab 可看到记录', (await bodyText()).includes(MOVE_NAME))
     await clickIn('.move-card', MOVE_NAME)
     await waitText('箱子列表')
     check('恢复后 5 个箱子', (await count('.box-row')) === 5)
@@ -541,20 +639,68 @@ async function main() {
     await fillInput('充电器')
     await waitText('5 号箱 · 卫生间')
     check('恢复后搜索结果关联正确', (await bodyText()).includes('5 号箱 · 卫生间'))
-    await screenshot('07-restored.png')
+    await screenshot('10-restored.png')
+
+    // 回「我的」准备清除数据
+    await gotoPage('/pages/mine/index', 'mine-before-clear')
+    await waitText('小王')
+
+    // ---- 清除本地数据：二次确认 + 取消不删 ----
+    await clickIn('.row', '清除本地数据')
+    await clickModalButton('取消')
+    await waitText('小王')
+    check('第一次确认点取消后数据不变', (await bodyText()).includes('1 次搬家') && (await bodyText()).includes('小王'))
+
+    await clickIn('.row', '清除本地数据')
+    await clickModalButton('继续')
+    await clickModalButton('确认删除')
+    await waitFor(async () => (await bodyText()).includes('0 次搬家'), '清除后概览归零')
+    const clearedText = await bodyText()
+    check(
+      '清除后概览归零',
+      clearedText.includes('0 次搬家') && clearedText.includes('0 个箱子') && clearedText.includes('0 件物品')
+    )
+    check('清除后昵称回「未设置昵称」', clearedText.includes('未设置昵称'))
+    check(
+      '清除后 mover:db 与 mover:profile 均被删除',
+      await page.evaluate(() => !localStorage.getItem('mover:db') && !localStorage.getItem('mover:profile'))
+    )
+    await screenshot('11-cleared.png')
+
+    // 空数据时只 toast，不弹确认
+    await clickIn('.row', '清除本地数据')
+    await waitText('当前没有可清除的数据')
+    check(
+      '空数据清除只 toast 不弹确认',
+      (await page.$$eval('.uni-modal__btn', (elements) => elements.filter((element) => element.offsetParent !== null).length)) === 0
+    )
+
+    // ---- 换机恢复：数据回来，资料回默认且不报错 ----
+    await clickIn('.row', '恢复备份')
+    await page.waitForSelector('.backup-box__text', { visible: true })
+    await fillTextarea(exported)
+    await clickButton('校验并恢复')
+    await clickModalButton('恢复')
+    await page.waitForSelector('.backup-box__text', { hidden: true })
+    await waitFor(async () => (await bodyText()).includes('31 件物品'), '换机恢复后概览')
+    const restoredText = await bodyText()
+    check('换机恢复后记录回来', restoredText.includes('1 次搬家') && restoredText.includes('31 件物品'))
+    check('换机恢复后昵称回默认', restoredText.includes('未设置昵称'))
+
+    await clickIn('.uni-tabbar__item', '搬家')
+    await waitText(MOVE_NAME)
+    check('换机恢复后首页有搬家记录', (await bodyText()).includes(MOVE_NAME))
+    await gotoPage('/pages/mine/index', 'mine-bad-backup')
+    await waitText('未设置昵称')
 
     // ---- 坏备份：恢复失败且原数据不变 ----
-    await gotoPage('/pages/index/index', 'corrupt-home')
-    await waitText('我的搬家')
-    await clickIn('.section-action', '数据与说明')
-    await waitText('备份与恢复')
     await clickIn('.row', '恢复备份')
     await page.waitForSelector('.backup-box__text', { visible: true })
     await fillTextarea('{ 这不是合法的备份 JSON')
     await clickButton('校验并恢复')
     await waitFor(async () => (await bodyText()).includes('备份内容不是有效的 JSON'), '坏备份给出可读提示')
     check('坏备份给出可读提示', (await bodyText()).includes('备份内容不是有效的 JSON'))
-    await screenshot('08-bad-backup.png')
+    await screenshot('12-bad-backup.png')
     await clickButton('取消')
     await gotoPage('/pages/index/index', 'corrupt-home-2')
     await waitText(MOVE_NAME)
