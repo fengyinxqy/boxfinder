@@ -2,14 +2,17 @@
   <view class="page page--with-bar page--tabbar">
     <view class="hero">
       <view class="hero__copy">
-        <text class="hero__kicker">MOVE · PACK</text>
-        <text class="hero__title hero__title--first">箱号写得清，</text>
-        <text class="hero__title">搬到哪间一目了然。</text>
-        <text class="hero__desc">每次搬家单独记录，箱子从 1 号开始自动编号。先把编号写在纸箱上，再往里装。</text>
+        <text class="hero__title">每件物品，都有去处</text>
+        <text class="hero__sub">写好箱号，再开始装箱</text>
       </view>
       <view class="hero__art">
-        <view class="label-card label-card--back">2</view>
-        <view class="label-card">1</view>
+        <view class="carton">
+          <view class="carton__lid"></view>
+          <view class="carton__tape"></view>
+          <view class="carton__label">
+            <text class="carton__num">1</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -20,16 +23,16 @@
 
     <view class="section-head">
       <text class="section-title">我的搬家</text>
+      <text class="section-action" @tap="goMine">数据与说明 ›</text>
     </view>
 
     <view v-if="moves.length" class="move-list">
-      <view v-for="move in moves" :key="move.id" class="move-card" @tap="goMove(move)">
+      <view v-for="move in moves" :key="move.id" class="move-card" hover-class="press" @tap="goMove(move)">
         <view class="move-card__body">
           <text class="move-card__name">{{ move.name }}</text>
           <text class="move-card__meta">{{ formatDate(move.createdAt) }} 创建 · {{ boxCount(move.id) }} 个箱子</text>
         </view>
-        <view class="move-card__rename" hover-class="press" @tap.stop="openRename(move)">改名</view>
-        <text class="move-card__arrow">›</text>
+        <text class="move-card__rename" hover-class="press" @tap.stop="openRename(move)">改名 ›</text>
       </view>
     </view>
 
@@ -37,15 +40,15 @@
       <button class="btn btn--ghost" hover-class="none" @tap="openCreate">创建第一次搬家</button>
     </EmptyState>
 
-    <view class="note">
-      <text class="note__title">这一版能做什么</text>
-      <text class="note__item">· 管理多次搬家，每次搬家单独编号</text>
-      <text class="note__item">· 添加、编辑、删除箱子，记录目标房间和备注</text>
-      <text class="note__item">· 在箱内记录物品名称和数量，支持保存并继续添加</text>
-      <text class="note__item">· 搜物品名称或箱号，结果显示「3 号箱 · 书房」</text>
-      <text class="note__item">· 物品可以移箱，箱子按封箱、搬运、拆箱推进</text>
-      <text class="note__item">· 数据保存在本机，关闭重进不会丢</text>
-      <text class="note__item note__item--muted">· 备份与恢复、示例数据在底部「我的」页</text>
+    <view class="guide-card">
+      <text class="guide-card__title">使用说明</text>
+      <view class="guide-steps">
+        <view v-for="(step, index) in steps" :key="step" class="guide-step">
+          <text class="guide-step__no">{{ index + 1 }}.</text>
+          <text class="guide-step__text">{{ step }}</text>
+        </view>
+      </view>
+      <text class="guide-card__note">数据仅保存在本机，请定期备份。</text>
     </view>
 
     <view class="bottom-bar bottom-bar--tabbar">
@@ -63,6 +66,13 @@ import { actions, refresh, store } from '../../store/index.js'
 import { formatDate } from '../../utils/format.js'
 import EmptyState from '../../components/EmptyState.vue'
 import MoveFormDialog from '../../components/MoveFormDialog.vue'
+
+const steps = [
+  '创建搬家：为本次搬家建立记录。',
+  '编号装箱：按顺序写好箱号并装箱。',
+  '搜索定位：通过物品或箱号快速找到位置。',
+  '搬运拆箱：更新箱子状态，逐步完成搬家。',
+]
 
 const dialogVisible = ref(false)
 const editingMove = ref(null)
@@ -90,6 +100,11 @@ function goMove(move) {
   uni.navigateTo({ url: `/pages/move/detail?id=${move.id}` })
 }
 
+/** 「数据与说明」：备份、占用等信息与帮助都在「我的」tab。 */
+function goMine() {
+  uni.switchTab({ url: '/pages/mine/index' })
+}
+
 function handleSubmit(name) {
   saving.value = true
   try {
@@ -114,10 +129,15 @@ onShow(() => {
 </script>
 
 <style scoped>
+/* ---------- Hero ---------- */
 .hero {
   display: flex;
-  justify-content: space-between;
-  padding: 32rpx 4rpx 44rpx;
+  align-items: center;
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: #fff8ea;
+  border: 1rpx solid var(--c-line);
+  border-radius: var(--r-card);
 }
 
 .hero__copy {
@@ -125,101 +145,115 @@ onShow(() => {
   min-width: 0;
 }
 
-.hero__kicker {
-  display: block;
-  font-size: 20rpx;
-  letter-spacing: 6rpx;
-  color: var(--c-ink-3);
-}
-
 .hero__title {
   display: block;
-  font-size: 50rpx;
+  overflow: hidden;
+  font-size: 40rpx;
   font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: 1rpx;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.hero__title--first {
-  margin-top: 14rpx;
-}
-
-.hero__desc {
+.hero__sub {
   display: block;
-  padding-right: 12rpx;
-  margin-top: 20rpx;
-  font-size: 25rpx;
-  line-height: 1.65;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sub);
+  line-height: 1.5;
   color: var(--c-ink-2);
 }
 
 .hero__art {
-  position: relative;
   flex-shrink: 0;
-  width: 172rpx;
-  height: 168rpx;
-  margin-top: 22rpx;
+  width: 156rpx;
+  margin-left: var(--sp-3);
 }
 
-.label-card {
+.carton {
+  position: relative;
+  width: 148rpx;
+  height: 126rpx;
+  margin-top: 20rpx;
+  background: #e8c49c;
+  border: 1rpx solid #c9a87c;
+  border-radius: 6rpx;
+}
+
+.carton__lid {
   position: absolute;
-  top: 18rpx;
-  right: 8rpx;
+  top: -18rpx;
+  left: -6rpx;
+  right: -6rpx;
+  height: 26rpx;
+  background: #dcb487;
+  border: 1rpx solid #c9a87c;
+  border-radius: 4rpx;
+}
+
+.carton__tape {
+  position: absolute;
+  top: -18rpx;
+  left: 50%;
+  width: 18rpx;
+  height: 86rpx;
+  margin-left: -9rpx;
+  background: rgba(255, 250, 240, 0.66);
+}
+
+.carton__label {
+  position: absolute;
+  right: 12rpx;
+  bottom: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 136rpx;
-  height: 136rpx;
-  font-size: 62rpx;
+  width: 56rpx;
+  height: 56rpx;
+  background: #fffdf8;
+  border: 1rpx solid #c9a87c;
+  border-radius: 4rpx;
+}
+
+.carton__num {
+  font-size: 32rpx;
   font-weight: 700;
   line-height: 1;
   color: #8a5a2b;
-  background: #fff8ea;
-  border: 2rpx dashed #c9a87c;
-  border-radius: 14rpx;
-  box-shadow: 0 14rpx 30rpx rgba(80, 52, 24, 0.1);
-  transform: rotate(6deg);
 }
 
-.label-card--back {
-  top: 2rpx;
-  right: 62rpx;
-  background: #fdf3e0;
-  opacity: 0.55;
-  transform: rotate(-8deg);
-}
-
+/* ---------- 提示 ---------- */
 .alert {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 24rpx;
-  margin-bottom: 20rpx;
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
   background: #fbeae4;
-  border-radius: 16rpx;
+  border-radius: var(--r-inner);
 }
 
 .alert__text {
   flex: 1;
-  font-size: 24rpx;
+  font-size: var(--fs-note);
   color: #a83e21;
 }
 
 .alert__action {
-  margin-left: 20rpx;
-  font-size: 24rpx;
+  margin-left: var(--sp-3);
+  font-size: var(--fs-note);
   color: #a83e21;
   text-decoration: underline;
 }
 
+/* ---------- 搬家列表 ---------- */
 .move-card {
   display: flex;
   align-items: center;
-  padding: 28rpx 26rpx;
-  margin-bottom: 18rpx;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
   background: var(--c-surface);
   border: 1rpx solid var(--c-line);
-  border-radius: 24rpx;
+  border-radius: var(--r-card);
 }
 
 .move-card__body {
@@ -229,59 +263,82 @@ onShow(() => {
 
 .move-card__name {
   display: block;
-  font-size: 32rpx;
+  overflow: hidden;
+  font-size: var(--fs-row);
   font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .move-card__meta {
   display: block;
-  margin-top: 8rpx;
-  font-size: 23rpx;
+  margin-top: 6rpx;
+  font-size: var(--fs-sub);
+  line-height: 1.4;
   color: var(--c-ink-3);
 }
 
 .move-card__rename {
-  padding: 8rpx 18rpx;
-  margin-right: 12rpx;
-  font-size: 22rpx;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 104rpx;
+  min-height: 88rpx;
+  margin-left: var(--sp-2);
+  font-size: var(--fs-sub);
   color: var(--c-accent);
-  background: var(--c-accent-soft);
-  border-radius: 999rpx;
-}
-
-.move-card__arrow {
-  font-size: 40rpx;
-  line-height: 1;
-  color: var(--c-ink-3);
 }
 
 .press {
   opacity: 0.6;
 }
 
-.note {
-  padding: 28rpx;
-  margin-top: 36rpx;
-  border: 2rpx dashed var(--c-line-strong);
-  border-radius: 24rpx;
+/* ---------- 使用说明 ---------- */
+.guide-card {
+  padding: var(--sp-3) var(--sp-4);
+  margin-top: var(--sp-4);
+  background: var(--c-surface);
+  border: 1rpx solid var(--c-line);
+  border-radius: var(--r-card);
 }
 
-.note__title {
+.guide-card__title {
   display: block;
-  margin-bottom: 14rpx;
-  font-size: 26rpx;
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-section);
   font-weight: 600;
+}
+
+.guide-step {
+  display: flex;
+  align-items: flex-start;
+  padding: 6rpx 0;
+}
+
+.guide-step__no {
+  flex-shrink: 0;
+  width: 36rpx;
+  font-size: var(--fs-sub);
+  line-height: 1.7;
   color: var(--c-ink-2);
 }
 
-.note__item {
+.guide-step__text {
+  flex: 1;
+  font-size: var(--fs-sub);
+  line-height: 1.7;
+  color: var(--c-ink-2);
+}
+
+.guide-card__note {
   display: block;
-  font-size: 24rpx;
-  line-height: 1.9;
-  color: var(--c-ink-2);
-}
-
-.note__item--muted {
+  padding-top: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-note);
+  line-height: 1.5;
   color: var(--c-ink-3);
+  border-top: 1rpx solid var(--c-line);
 }
 </style>
